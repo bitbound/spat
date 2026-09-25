@@ -18,6 +18,8 @@ public sealed class PlatformPaths : IPlatformPaths
 
     public string AudioDirectory => Path.Combine(DataDirectory, "audio");
 
+    public string UpdateStagingDirectory => Path.Combine(Path.GetTempPath(), AppFolderName, "update");
+
     public PlatformPaths(IEnvironmentVariables? environment = null)
     {
         var env = environment ?? new ProcessEnvironmentVariables();

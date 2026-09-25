@@ -8,8 +8,10 @@ using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Core.Speech;
 using Spat.Libraries.Core.Theming;
+using Spat.Libraries.Core.Updates;
 using Spat.Libraries.Native.Windows;
 using Spat.Libraries.Speech;
+using Spat.Libraries.Updater;
 using Spat.Views;
 
 namespace Spat.Startup;
@@ -68,6 +70,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGlobalHotkeySource, WindowsGlobalHotkeySource>();
         services.AddSingleton<ISystemColorSchemeSource, RegistryColorSchemeSource>();
         services.AddSingleton<IAutostartService, RegistryAutostartService>();
+
+        services.AddSingleton<IUpdateService, GitHubReleaseUpdateService>();
+        services.AddSingleton<UpdateHandoffRunner>();
 
         services.AddSingleton<IDictationCoordinator, DictationCoordinator>();
         services.AddSingleton<IStatusOverlayController, StatusOverlayController>();

@@ -14,5 +14,10 @@ public interface IPlatformPaths
 
     string AudioDirectory { get; }
 
+    /// <summary>
+    /// Where a downloaded update binary waits before it replaces the running one.
+    /// </summary>
+    string UpdateStagingDirectory { get; }
+
     void EnsureDirectories();
 }

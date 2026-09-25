@@ -53,6 +53,9 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
     private bool _keepRecordings = true;
 
     [ObservableProperty]
+    private bool _checkForUpdates = true;
+
+    [ObservableProperty]
     private int _maximumRecordingSeconds = 120;
 
     [ObservableProperty]
@@ -416,6 +419,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         settings.SilenceRmsThreshold = Math.Clamp(SilenceRmsThreshold, 0.0001f, 0.1f);
         settings.TypingDelayMs = Math.Clamp(TypingDelayMs, 1, 100);
         settings.StartOnLogin = StartOnLogin;
+        settings.CheckForUpdates = CheckForUpdates;
         settings.DebugLogging = DebugLogging;
         settings.InputDeviceId = SelectedDevice?.Device.Id;
         settings.InputDeviceName = SelectedDevice?.Device.Name;
@@ -528,6 +532,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         SilenceRmsThreshold = settings.SilenceRmsThreshold;
         TypingDelayMs = settings.TypingDelayMs;
         StartOnLogin = _autostart.IsEnabled();
+        CheckForUpdates = settings.CheckForUpdates;
         DebugLogging = settings.DebugLogging;
 
         SpeechEndpoint = settings.SpeechToText.Endpoint;

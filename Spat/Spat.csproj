@@ -9,6 +9,19 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!--
+    The shipped build is one self-contained exe that the in-app updater can swap in place
+    (see Spat.Libraries.Updater). The NativeAOT profile overrides PublishSingleFile.
+  -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
@@ -37,5 +50,6 @@
     <ProjectReference Include="..\Libraries\Spat.Libraries.Core\Spat.Libraries.Core.csproj" />
     <ProjectReference Include="..\Libraries\Spat.Libraries.Speech\Spat.Libraries.Speech.csproj" />
     <ProjectReference Include="..\Libraries\Spat.Libraries.Native.Windows\Spat.Libraries.Native.Windows.csproj" />
+    <ProjectReference Include="..\Libraries\Spat.Libraries.Updater\Spat.Libraries.Updater.csproj" />
   </ItemGroup>
 </Project>

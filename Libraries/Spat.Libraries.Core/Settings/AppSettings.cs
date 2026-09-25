@@ -67,6 +67,8 @@ public sealed class AppSettings
     /// </summary>
     public bool StartOnLogin { get; set; }
 
+    public bool CheckForUpdates { get; set; } = true;
+
     /// <summary>
     /// Raises the log level to Debug so audio capture and input injection activity are recorded.
     /// </summary>

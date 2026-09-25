@@ -6,6 +6,9 @@
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Matches the app project, which builds for a single RID as a self-contained executable. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +21,7 @@
     <ProjectReference Include="..\..\Libraries\Spat.Libraries.Core\Spat.Libraries.Core.csproj" />
     <ProjectReference Include="..\..\Libraries\Spat.Libraries.Speech\Spat.Libraries.Speech.csproj" />
     <ProjectReference Include="..\..\Libraries\Spat.Libraries.Native.Windows\Spat.Libraries.Native.Windows.csproj" />
+    <ProjectReference Include="..\..\Libraries\Spat.Libraries.Updater\Spat.Libraries.Updater.csproj" />
   </ItemGroup>
 
 </Project>

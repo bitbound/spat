@@ -17,25 +17,23 @@ Spat is a small desktop utility for Windows. It records the microphone, sends th
 - An optional second pass through a text model to clean up the transcript before it gets typed.
 - Text is injected with `SendInput`, so it lands in the focused application like typed keystrokes.
 - A history of past dictations with optional recording playback.
-- ClickOnce deployment with automatic update checks.
+- Ships as one self-contained single-file exe that updates itself in place from GitHub Releases.
 - Light and dark themes that follow the Windows system color scheme.
 - Optional start-on-login, toggled from Settings.
 
 ## Install
 
-### ClickOnce
+Download `spat-x64.exe` from the [latest release](https://github.com/bitbound/spat/releases/latest),
+put it anywhere (for example `%LOCALAPPDATA%\Programs\spat\`), and run it. No installer and no
+.NET install needed.
 
-Install Spat from its ClickOnce deployment URL. Each release checks for updates on launch and
-installs them automatically, so there is nothing to babysit after the first install.
+On launch Spat checks GitHub Releases. When a newer version exists, an **Update available** link
+appears in the status bar; clicking it downloads the new build, swaps it over the running
+executable, and relaunches — same location, same name, nothing to reinstall. Turn the check off
+under **Settings → Check GitHub Releases for updates**.
 
-### Download from GitHub Releases
-
-Grab `spat-windows-x64-aot.zip` from the [latest release](https://github.com/bitbound/spat/releases/latest).
-It is a self-contained Native AOT build, so no .NET install is needed. Unzip it anywhere and run
-`spat.exe`.
-
-The release also ships `spat-clickonce.zip`, the raw ClickOnce deployment folder, for hosting on
-your own web space.
+The release also ships `spat-windows-x64-aot.zip`, a Native AOT build. It starts faster but updates
+only by re-downloading the archive yourself, since the in-place updater targets the single-file exe.
 
 Once Spat is running it lives in the system tray. Open **Settings**, fill in the sections below,
 then press your hotkey and start talking.
@@ -116,20 +114,16 @@ dotnet run --project tests/Spat.Tests/Spat.Tests.csproj
 
 ## Publish Targets
 
-### ClickOnce
-
-`dotnet publish` cannot produce ClickOnce output (the manifest tasks require the .NET Framework
-MSBuild that ships with Visual Studio, see [dotnet/sdk#28403](https://github.com/dotnet/sdk/issues/28403)).
-Publish with Visual Studio's MSBuild instead:
+### Release build (single-file, self-updating)
 
 ```
-msbuild Spat\Spat.csproj /t:Restore,Publish /p:PublishProfile=clickonce /p:Configuration=Release
+dotnet publish Spat/Spat.csproj -c Release -o ./artifacts
 ```
 
-The profile in `Spat/Properties/PublishProfiles/clickonce.pubxml` carries the deployment identity
-and the update URLs under `PublishUrl`/`InstallUrl` — point those at wherever the deployment folder
-will be hosted, and turn on `SignManifests` with a code-signing certificate to avoid SmartScreen
-warnings.
+The project file carries the single-file defaults (`RuntimeIdentifier`, `SelfContained`,
+`PublishSingleFile`, compression), so this yields one `spat.exe`. The release workflow renames it
+to `spat-x64.exe` and publishes that as the GitHub Release asset; the in-app updater looks for
+exactly that name (`ReleaseAssetSelector.AssetName`, pinned by a unit test).
 
 ### Native AOT
 

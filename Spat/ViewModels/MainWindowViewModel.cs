@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using Spat.Libraries.Core.Dictation;
 using Spat.Libraries.Core.Input;
 using Spat.Libraries.Core.Settings;
+using Spat.Libraries.Core.Updates;
 using Spat.Views;
 
 namespace Spat.ViewModels;
@@ -21,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
     private readonly INavigationProvider _navigation;
     private readonly IServiceProvider _serviceProvider;
     private readonly ISettingsService _settings;
+    private readonly IUpdateService _updates;
 
     private string? _boundHotkeySignature;
     private bool _isBindingHotkey;
@@ -43,24 +45,33 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
     [ObservableProperty]
     private string? _hotkeyError;
 
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private string? _updateVersion;
+
     public MainWindowViewModel(
         INavigationProvider navigation,
         IServiceProvider serviceProvider,
         IDictationCoordinator dictation,
         IGlobalHotkeySource hotkeys,
-        ISettingsService settings)
+        ISettingsService settings,
+        IUpdateService updates)
     {
         _navigation = navigation;
         _serviceProvider = serviceProvider;
         _dictation = dictation;
         _hotkeys = hotkeys;
         _settings = settings;
+        _updates = updates;
 
         _dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(RefreshDictationStatus);
         _hotkeys.Activated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyActivated);
         _hotkeys.Deactivated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyDeactivated);
         _hotkeys.BindingLost += (_, _) => Dispatcher.UIThread.Post(OnHotkeyBindingLost);
         _settings.SettingsChanged += (_, _) => Dispatcher.UIThread.Post(RebindHotkeyIfChanged);
+        _updates.UpdateAvailable += (_, info) => Dispatcher.UIThread.Post(() => ShowUpdate(info));
     }
 
     public ObservableCollection<NavItemViewModel> NavigationItems { get; } = [];
@@ -77,6 +88,7 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
 
         RefreshDictationStatus();
         _ = StartHotkeyAsync();
+        _ = CheckForUpdatesAsync();
     }
 
     partial void OnIsListeningChanged(bool value)
@@ -85,6 +97,12 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
         {
             DictationStatus = "Listening";
         }
+    }
+
+    [RelayCommand]
+    private async Task ApplyUpdateAsync()
+    {
+        await _updates.ApplyAsync();
     }
 
     private async Task StartHotkeyAsync()
@@ -151,6 +169,34 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
     private string HotkeySignature()
     {
         return $"{_settings.Current.Hotkey}|{_settings.Current.TriggerMode}";
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (!_settings.Current.CheckForUpdates)
+        {
+            return;
+        }
+
+        try
+        {
+            var update = await _updates.CheckAsync();
+
+            if (update is not null)
+            {
+                ShowUpdate(update);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Update check failed: {ex}");
+        }
+    }
+
+    private void ShowUpdate(UpdateInfo info)
+    {
+        IsUpdateAvailable = true;
+        UpdateVersion = info.Version;
     }
 
     private void OnHotkeyActivated()

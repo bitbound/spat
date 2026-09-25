@@ -71,6 +71,8 @@ public sealed class TestPlatformPaths : IPlatformPaths
 
     public string AudioDirectory => "/data/spat/audio";
 
+    public string UpdateStagingDirectory => "/tmp/spat/update";
+
     public void EnsureDirectories()
     {
     }

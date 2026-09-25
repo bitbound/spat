@@ -3,6 +3,7 @@
     <Project Path="Libraries/Spat.Libraries.Core/Spat.Libraries.Core.csproj" />
     <Project Path="Libraries/Spat.Libraries.Native.Windows/Spat.Libraries.Native.Windows.csproj" />
     <Project Path="Libraries/Spat.Libraries.Speech/Spat.Libraries.Speech.csproj" />
+    <Project Path="Libraries/Spat.Libraries.Updater/Spat.Libraries.Updater.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Spat.Tests/Spat.Tests.csproj" />

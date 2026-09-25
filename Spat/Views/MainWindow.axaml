@@ -109,6 +109,12 @@
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
 
+        <HyperlinkButton Grid.Column="3"
+                         Content="{Binding UpdateVersion, StringFormat='Update available ({0})'}"
+                         Command="{Binding ApplyUpdateCommand}"
+                         IsVisible="{Binding IsUpdateAvailable}"
+                         VerticalAlignment="Center" />
+
       </Grid>
     </Border>
 

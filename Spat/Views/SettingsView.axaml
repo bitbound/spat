@@ -115,6 +115,9 @@
             <CheckBox Content="Keep recordings in history so they can be played back"
                       IsChecked="{Binding KeepRecordings}" />
 
+            <CheckBox Content="Check GitHub Releases for updates"
+                      IsChecked="{Binding CheckForUpdates}" />
+
             <CheckBox Content="Start Spat when I sign in to Windows"
                       IsChecked="{Binding StartOnLogin}" />
           </StackPanel>
