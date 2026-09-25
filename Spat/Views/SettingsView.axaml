@@ -91,7 +91,7 @@
               <TextBlock Grid.Row="3" Classes="field" Text="Typing delay (ms)" Margin="0,10,0,0" />
               <TextBox Grid.Row="3" Grid.Column="1" Margin="0,10,0,0"
                        Text="{Binding TypingDelayMs}"
-                       ToolTip.Tip="Pause between injected keys. Raise it if an application drops characters. Do not go far below 10: very small values can type nothing at all." />
+                       ToolTip.Tip="Pause between each key press and release. 0 types the whole transcript in one burst, which most applications handle perfectly. Raise it if an application drops characters." />
             </Grid>
           </StackPanel>
         </Border>

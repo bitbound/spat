@@ -19,10 +19,12 @@ public sealed class WindowsTextInputInjector(
     ILogger<WindowsTextInputInjector> logger) : ITextInputInjector
 {
     /// <summary>
-    /// Bounds on the configured pause. Zero would put the press and release in the same input frame,
-    /// which types nothing at all, so the floor is one millisecond.
+    /// Upper bound on the configured pause. The floor is zero, which selects the single-burst path in
+    /// <see cref="TypeAsync"/>: every event goes into one SendInput call and the target still receives
+    /// them as ordered key-down/key-up messages. A positive delay exists only for targets that poll key
+    /// state instead of processing messages; for them the pause is what makes a press observable.
     /// </summary>
-    private const int MinKeyDelayMs = 1;
+    private const int MinKeyDelayMs = 0;
 
     private const int MaxKeyDelayMs = 100;
 
@@ -48,23 +50,34 @@ public sealed class WindowsTextInputInjector(
         try
         {
             var delay = ResolveDelay(_settings.Current.TypingDelayMs);
-            var injected = 0;
 
-            foreach (var character in text)
+            if (delay == 0)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                // Fast path: one SendInput call carrying every press and release. Message-driven
+                // applications - which is every ordinary Windows program - dequeue them as ordered
+                // key-down/key-up pairs, so the whole transcript lands at once with nothing to pace.
+                TypeBurst(text);
+            }
+            else
+            {
+                foreach (var character in text)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                TypeUnit(character, keyUp: false);
-                await PauseAsync(delay, cancellationToken);
-                TypeUnit(character, keyUp: true);
-                await PauseAsync(delay, cancellationToken);
+                    TypeUnit(character, keyUp: false);
 
-                injected++;
+                    // The only pause that matters: the gap between a press and its release, so a
+                    // target that polls key state can observe both. Nothing needs to settle after
+                    // a character is finished, so there is no second pause.
+                    await PauseAsync(delay, cancellationToken);
+
+                    TypeUnit(character, keyUp: true);
+                }
             }
 
             // One line per dictation. It records the delay actually in effect, which separates
             // "nothing typed" from "typed too fast for the target application".
-            _logger.LogInformation("Injected {Injected} characters with a {Delay} ms key delay.", injected, delay);
+            _logger.LogInformation("Injected {Injected} characters with a {Delay} ms key delay.", text.Length, delay);
         }
         finally
         {
@@ -79,6 +92,36 @@ public sealed class WindowsTextInputInjector(
 
     private static void TypeUnit(char character, bool keyUp)
     {
+        var sent = SpatWin32.SendInput([BuildInput(character, keyUp)], Marshal.SizeOf<INPUT>());
+
+        if (sent != 1)
+        {
+            throw new InvalidOperationException("SendInput rejected the keyboard event, so typing stopped.");
+        }
+    }
+
+    // Every press and release in one SendInput call. Windows inserts them into the target's input
+    // stream as ordered events, so the transcript is injected as fast as the queue allows.
+    private static void TypeBurst(string text)
+    {
+        var inputs = new INPUT[text.Length * 2];
+
+        for (var index = 0; index < text.Length; index++)
+        {
+            inputs[(index * 2)] = BuildInput(text[index], keyUp: false);
+            inputs[(index * 2) + 1] = BuildInput(text[index], keyUp: true);
+        }
+
+        var sent = SpatWin32.SendInput(inputs, Marshal.SizeOf<INPUT>());
+
+        if (sent != (uint)inputs.Length)
+        {
+            throw new InvalidOperationException("SendInput rejected the keyboard events, so typing stopped.");
+        }
+    }
+
+    private static INPUT BuildInput(char character, bool keyUp)
+    {
         var flags = KEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE;
 
         if (keyUp)
@@ -86,7 +129,7 @@ public sealed class WindowsTextInputInjector(
             flags |= KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
         }
 
-        var input = new INPUT
+        return new INPUT
         {
             type = INPUT_TYPE.INPUT_KEYBOARD,
             ki = new KEYBDINPUT
@@ -95,13 +138,6 @@ public sealed class WindowsTextInputInjector(
                 dwFlags = flags,
             },
         };
-
-        var sent = SpatWin32.SendInput([input], Marshal.SizeOf<INPUT>());
-
-        if (sent != 1)
-        {
-            throw new InvalidOperationException("SendInput rejected the keyboard event, so typing stopped.");
-        }
     }
 
     internal static async Task PauseAsync(int milliseconds, CancellationToken cancellationToken)

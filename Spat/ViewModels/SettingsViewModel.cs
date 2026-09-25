@@ -417,7 +417,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         settings.KeepRecordings = KeepRecordings;
         settings.MaximumRecordingSeconds = Math.Clamp(MaximumRecordingSeconds, 1, 3600);
         settings.SilenceRmsThreshold = Math.Clamp(SilenceRmsThreshold, 0.0001f, 0.1f);
-        settings.TypingDelayMs = Math.Clamp(TypingDelayMs, 1, 100);
+        settings.TypingDelayMs = Math.Clamp(TypingDelayMs, 0, 100);
         settings.StartOnLogin = StartOnLogin;
         settings.CheckForUpdates = CheckForUpdates;
         settings.DebugLogging = DebugLogging;

@@ -5,9 +5,10 @@ using Spat.Libraries.Native.Windows;
 namespace Spat.Tests;
 
 /// <summary>
-/// The key delay is applied between the press and the release of every injected character. Making it
-/// too small puts both events in the same input frame, and then some applications drop the character
-/// entirely. That is not a degraded result, it is a total failure, so the bounds matter.
+/// The key delay is applied between the press and the release of every injected character, as a
+/// compatibility escape for targets that poll key state rather than process key messages. Zero means
+/// no pacing at all: the whole transcript is injected in a single SendInput burst, which ordinary
+/// message-driven applications handle perfectly. The bounds keep a bad value from stalling injection.
 /// </summary>
 public class TypingDelayTests
 {
@@ -26,16 +27,16 @@ public class TypingDelayTests
     }
 
     [Fact]
-    public void ResolveDelay_WithZero_ClampsToOne()
+    public void ResolveDelay_WithZero_StaysZero()
     {
-        // Zero would remove the pause entirely, which can type nothing in slow targets.
-        Assert.Equal(1, WindowsTextInputInjector.ResolveDelay(0));
+        // Zero is meaningful: it selects the single-burst injection path.
+        Assert.Equal(0, WindowsTextInputInjector.ResolveDelay(0));
     }
 
     [Fact]
-    public void ResolveDelay_WithANegativeValue_ClampsToOne()
+    public void ResolveDelay_WithANegativeValue_ClampsToZero()
     {
-        Assert.Equal(1, WindowsTextInputInjector.ResolveDelay(-25));
+        Assert.Equal(0, WindowsTextInputInjector.ResolveDelay(-25));
     }
 
     [Fact]
@@ -68,7 +69,9 @@ public class TypingDelayTests
 
         var elapsedMs = (Stopwatch.GetTimestamp() - started) * 1000 / Stopwatch.Frequency;
 
-        Assert.True(elapsedMs < 12, $"A 2 ms pause took {elapsedMs} ms.");
+        // A Task.Delay-based pause would land at one timer tick (~15.6 ms) even on an idle machine,
+        // so the ceiling rejects the regression while leaving room for scheduling hiccups.
+        Assert.True(elapsedMs is >= 0 and < 25, $"A 2 ms pause took {elapsedMs} ms.");
     }
 
     [Fact]

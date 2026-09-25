@@ -74,7 +74,7 @@ Also under **Settings → Dictation**.
 | Microphone | Capture device. Refresh rescans what Windows exposes. |
 | Max recording seconds | Hard stop for a single take. |
 | Silence threshold | Below this level the take ends early. Raise it if background noise keeps a recording alive. |
-| Typing delay | Pause between injected keys. Raise it if an app drops characters. |
+| Typing delay | Pause between a key press and its release. 0 types the whole transcript in one burst; raise it if an app drops characters. |
 
 ### Optional post-processing
 

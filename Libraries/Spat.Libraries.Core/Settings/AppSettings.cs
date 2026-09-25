@@ -51,8 +51,9 @@ public sealed class AppSettings
     /// more time to keep up.
     /// </summary>
     /// <remarks>
-    /// 2 ms is verified working on common Windows applications. If text starts going missing, raise it
-    /// from Settings, Dictation, Typing delay.
+    /// 2 ms is verified working on common Windows applications. Zero types the whole transcript in one
+    /// SendInput burst, which ordinary applications handle fine; raise it from Settings, Dictation,
+    /// Typing delay only if a target that polls the keyboard drops characters.
     /// </remarks>
     public int TypingDelayMs { get; set; } = DefaultTypingDelayMs;
 
