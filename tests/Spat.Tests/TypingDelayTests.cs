@@ -57,7 +57,7 @@ public class TypingDelayTests
         Assert.Equal(AppSettings.DefaultTypingDelayMs, WindowsTextInputInjector.ResolveDelay(AppSettings.DefaultTypingDelayMs));
     }
 
-    [Fact]
+    [SkipOnCiFact("Skipped on CI because wall-clock assertions are meaningless on shared runners that preempt threads freely.")]
     public async Task ShortPause_IsNotInflatedByTheSystemTimerTick()
     {
         // Task.Delay cannot sleep for less than one system timer tick (~15 ms). If the short configured

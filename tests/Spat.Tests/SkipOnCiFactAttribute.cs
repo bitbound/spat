@@ -7,13 +7,14 @@ namespace Spat.Tests;
 public sealed class SkipOnCiFactAttribute : FactAttribute
 {
     public SkipOnCiFactAttribute(
+        string? reason = null,
         [CallerFilePath] string? sourceFilePath = null,
         [CallerLineNumber] int sourceLineNumber = -1)
         : base(sourceFilePath, sourceLineNumber)
     {
         if (IsCiEnvironment())
         {
-            Skip = "Skipped on CI because the test needs a live audio capture device.";
+            Skip = reason ?? "Skipped on CI because the test needs a live audio capture device.";
         }
     }
 
