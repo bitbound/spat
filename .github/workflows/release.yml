@@ -1,0 +1,96 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Create a beta pre-release
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Calculate version
+        id: version
+        shell: pwsh
+        run: |
+          $ver = (Get-Date).ToUniversalTime().ToString('yyyy.M.d')
+          $t = "v$ver"
+          if ('${{ inputs.prerelease }}' -eq 'true') {
+            $t += '-beta'
+          }
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "tag=$t" >> $env:GITHUB_OUTPUT
+
+      - name: Publish NativeAOT executable
+        run: >-
+          dotnet publish Spat/Spat.csproj
+          --configuration Release
+          -p:PublishProfile=nativeaot
+          -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Publish ClickOnce package
+        shell: pwsh
+        run: |
+          # ClickOnce manifest tasks are only supported on the .NET Framework MSBuild shipped
+          # with Visual Studio, not on "dotnet publish". See dotnet/sdk#28403.
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' |
+            Select-Object -First 1
+          if (-not $msbuild) {
+            throw "Could not locate Visual Studio MSBuild."
+          }
+          & $msbuild Spat/Spat.csproj /t:Restore,Publish `
+            /p:PublishProfile=clickonce /p:Configuration=Release `
+            /p:ApplicationVersion=${{ steps.version.outputs.version }}.0 `
+            /p:Version=${{ steps.version.outputs.version }}
+          if ($LASTEXITCODE -ne 0) {
+            throw "ClickOnce publish failed."
+          }
+
+      - name: Package artifacts
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path Spat/bin/Release/publish/nativeaot/spat.exe, `
+                  Spat/bin/Release/publish/nativeaot/av_libglesv2.dll, `
+                  Spat/bin/Release/publish/nativeaot/libSkiaSharp.dll, `
+                  Spat/bin/Release/publish/nativeaot/libHarfBuzzSharp.dll `
+            -DestinationPath ./spat-windows-x64-aot.zip
+          Compress-Archive `
+            -Path Spat/bin/Release/publish/clickonce/* `
+            -DestinationPath ./spat-clickonce.zip
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        shell: pwsh
+        run: |
+          $releaseArgs = @(
+            $env:TAG,
+            './spat-windows-x64-aot.zip',
+            './spat-clickonce.zip',
+            '--title', $env:TAG,
+            '--generate-notes'
+          )
+          if ($env:PRERELEASE -eq 'true') {
+            $releaseArgs += '--prerelease'
+          }
+          gh release create @releaseArgs

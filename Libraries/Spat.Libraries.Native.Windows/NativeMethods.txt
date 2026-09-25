@@ -1,0 +1,17 @@
+// Global keyboard hook for the dictation hotkey.
+SetWindowsHookEx
+UnhookWindowsHookEx
+CallNextHookEx
+GetAsyncKeyState
+PostThreadMessage
+GetCurrentThreadId
+GetMessage
+TranslateMessage
+DispatchMessage
+KBDLLHOOKSTRUCT
+
+// Text injection.
+SendInput
+
+// Change notification for the system color scheme.
+RegNotifyChangeKeyValue

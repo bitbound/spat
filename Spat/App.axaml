@@ -1,0 +1,46 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:Spat"
+             x:Class="Spat.App"
+             RequestedThemeVariant="Default">
+
+  <Application.DataTemplates>
+    <local:ViewLocator />
+  </Application.DataTemplates>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Resources/Theme.axaml" />
+        <ResourceInclude Source="/Resources/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Dark" Accent="#2196F3" RegionColor="#121212" />
+        <ColorPaletteResources x:Key="Light" Accent="#2196F3" RegionColor="#FAFAFA" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="/Resources/Styles.axaml" />
+  </Application.Styles>
+
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon Icon="/Assets/appicon.png"
+                ToolTipText="Spat"
+                Clicked="OnTrayIconClicked">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Open Spat" Click="OnTrayOpenClick" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Quit Spat" Click="OnTrayQuitClick" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+
+</Application>

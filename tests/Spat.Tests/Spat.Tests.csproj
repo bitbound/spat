@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Spat.Tests</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.v3.runner.inproc.console" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Spat\Spat.csproj" />
+    <ProjectReference Include="..\..\Libraries\Spat.Libraries.Core\Spat.Libraries.Core.csproj" />
+    <ProjectReference Include="..\..\Libraries\Spat.Libraries.Speech\Spat.Libraries.Speech.csproj" />
+    <ProjectReference Include="..\..\Libraries\Spat.Libraries.Native.Windows\Spat.Libraries.Native.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

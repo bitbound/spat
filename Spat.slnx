@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Libraries/">
+    <Project Path="Libraries/Spat.Libraries.Core/Spat.Libraries.Core.csproj" />
+    <Project Path="Libraries/Spat.Libraries.Native.Windows/Spat.Libraries.Native.Windows.csproj" />
+    <Project Path="Libraries/Spat.Libraries.Speech/Spat.Libraries.Speech.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Spat.Tests/Spat.Tests.csproj" />
+  </Folder>
+  <Project Path="Spat/Spat.csproj" />
+</Solution>
