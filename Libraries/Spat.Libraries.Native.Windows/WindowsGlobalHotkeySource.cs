@@ -122,6 +122,13 @@ public sealed class WindowsGlobalHotkeySource : IGlobalHotkeySource
             && ReadPressedModifiers() == spec.Value.Modifiers;
     }
 
+    internal bool MatchesKey(uint keyCode)
+    {
+        var spec = _spec;
+
+        return spec is not null && keyCode == spec.Value.KeyCode;
+    }
+
     private static HotkeyModifiers ReadPressedModifiers()
     {
         var modifiers = HotkeyModifiers.None;
@@ -267,25 +274,30 @@ public sealed class WindowsGlobalHotkeySource : IGlobalHotkeySource
                 var isDown = message == WmKeyDown || message == WmSysKeyDown;
                 var isUp = message == WmKeyUp || message == WmSysKeyUp;
 
-                if ((isDown || isUp) && source.Matches(info.vkCode))
+                if ((isDown || isUp) && source.MatchesKey(info.vkCode))
                 {
-                    var owned = isDown ? source.Transitions.TryBeginPress() : source.Transitions.TryEndPress();
-
-                    if (owned)
+                    // A press only starts the hotkey while its modifiers are held; the same key with
+                    // other (or no) modifiers belongs to the focused application. Once the combination
+                    // matches, every repeat of it is swallowed too, so holding the key does not type.
+                    if (isDown && source.Matches(info.vkCode))
                     {
-                        if (isDown)
+                        if (source.Transitions.TryBeginPress())
                         {
                             source.RaiseActivated();
                         }
-                        else
-                        {
-                            source.RaiseDeactivated();
-                        }
+
+                        return (LRESULT)1;
                     }
 
-                    // Swallow repeats and releases of our own key even when the transition is not owned, so
-                    // the focused application never sees half of the shortcut.
-                    return (LRESULT)1;
+                    // A release ends the hotkey on the key alone, without consulting the modifiers.
+                    // Whoever releases first - Ctrl or Space - must not strand a recording: users let
+                    // go of the modifiers before the trigger key all the time.
+                    if (isUp && source.Transitions.TryEndPress())
+                    {
+                        source.RaiseDeactivated();
+
+                        return (LRESULT)1;
+                    }
                 }
             }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Spat.Libraries.Core.Input;
@@ -24,6 +25,12 @@ public sealed class WindowsTextInputInjector(
     private const int MinKeyDelayMs = 1;
 
     private const int MaxKeyDelayMs = 100;
+
+    /// <summary>
+    /// The longest pause worth waiting for precisely. Above this the coarse OS timer is accurate enough
+    /// and spinning would just burn CPU.
+    /// </summary>
+    private const int MaxSpunPauseMs = 10;
 
     private static readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -97,8 +104,31 @@ public sealed class WindowsTextInputInjector(
         }
     }
 
-    private static Task PauseAsync(int milliseconds, CancellationToken cancellationToken)
+    internal static async Task PauseAsync(int milliseconds, CancellationToken cancellationToken)
     {
-        return milliseconds <= 0 ? Task.CompletedTask : Task.Delay(milliseconds, cancellationToken);
+        if (milliseconds <= 0)
+        {
+            return;
+        }
+
+        // Task.Delay cannot sleep for less than one system timer tick (~15 ms), so routing the short
+        // configured pauses through it would turn a 1 ms setting into a 30 ms-per-character typewriter.
+        // Short waits are spun against the high-resolution clock instead; the thread is a dedicated
+        // typing worker, and a few milliseconds of spinning per character keeps it responsive to
+        // cancellation.
+        if (milliseconds > MaxSpunPauseMs)
+        {
+            await Task.Delay(milliseconds, cancellationToken);
+
+            return;
+        }
+
+        var until = Stopwatch.GetTimestamp() + (milliseconds * Stopwatch.Frequency / 1000);
+
+        while (Stopwatch.GetTimestamp() < until)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Thread.Yield();
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Native.Windows;
 
@@ -53,5 +54,31 @@ public class TypingDelayTests
     public void DefaultTypingDelay_IsWithinTheResolvedRange()
     {
         Assert.Equal(AppSettings.DefaultTypingDelayMs, WindowsTextInputInjector.ResolveDelay(AppSettings.DefaultTypingDelayMs));
+    }
+
+    [Fact]
+    public async Task ShortPause_IsNotInflatedByTheSystemTimerTick()
+    {
+        // Task.Delay cannot sleep for less than one system timer tick (~15 ms). If the short configured
+        // pauses waited a whole tick, every character would cost 30 ms of typing and the injection
+        // would feel sluggish no matter what delay the user set.
+        var started = Stopwatch.GetTimestamp();
+
+        await WindowsTextInputInjector.PauseAsync(2, TestContext.Current.CancellationToken);
+
+        var elapsedMs = (Stopwatch.GetTimestamp() - started) * 1000 / Stopwatch.Frequency;
+
+        Assert.True(elapsedMs < 12, $"A 2 ms pause took {elapsedMs} ms.");
+    }
+
+    [Fact]
+    public async Task ShortPause_ObservesCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => WindowsTextInputInjector.PauseAsync(5, cancellation.Token));
     }
 }
