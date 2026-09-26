@@ -47,6 +47,29 @@ public class GitHubReleaseUpdateServiceTests
     }
 
     [Fact]
+    public async Task CheckAsync_WhenSameDayReleaseHasALaterTimeRevision_ReturnsAnUpdate()
+    {
+        // Releases are tagged yyyy.M.d.HHmm, so a second build the same day must still compare as newer.
+        var (service, _) = Create(
+            Release("v2026.9.26.1954", withAsset: true),
+            currentVersion: new Version(2026, 9, 26, 1900));
+
+        var update = await service.CheckAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("v2026.9.26.1954", update?.Version);
+    }
+
+    [Fact]
+    public async Task CheckAsync_WhenSameDayReleaseHasAZeroPaddedEarlierRevision_ReturnsNull()
+    {
+        var (service, _) = Create(
+            Release("v2026.9.26.0244", withAsset: true),
+            currentVersion: new Version(2026, 9, 26, 1900));
+
+        Assert.Null(await service.CheckAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task CheckAsync_WhenTagIsNotAVersion_ReturnsNull()
     {
         var (service, _) = Create(Release("nightly-build", withAsset: true));
@@ -219,6 +242,17 @@ public class ReleaseWorkflowTests
         // The name lives in two places that cannot see each other, so pin them together here.
         Assert.Contains($"ASSET_NAME: {ReleaseAssetSelector.AssetName}", workflow, StringComparison.Ordinal);
         Assert.Contains("./artifacts/$env:ASSET_NAME", workflow, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReleaseWorkflow_TagsVersionsWithDateAndTimeSoSameDayReleasesDoNotCollide()
+    {
+        var workflow = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), ".github", "workflows", "release.yml"));
+
+        // A date-only tag (yyyy.M.d) made a second release on the same day fail with
+        // "a release with the same tag name already exists".
+        Assert.Contains("yyyy.M.d.HHmm", workflow, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

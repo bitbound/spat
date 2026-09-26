@@ -33,7 +33,9 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $ver = (Get-Date).ToUniversalTime().ToString('yyyy.M.d')
+          # UTC hour+minute as the revision so two releases on the same day get distinct tags
+          # (e.g. v2026.9.26.0244). System.Version sorts these correctly, so the updater still works.
+          $ver = (Get-Date).ToUniversalTime().ToString('yyyy.M.d.HHmm')
           if ('${{ inputs.prerelease }}' -eq 'true') {
             $ver += '-beta'
           }
