@@ -285,6 +285,7 @@ public class OpenAiTextGenerationClientTests
             () => client.CompleteAsync("prompt", TestContext.Current.CancellationToken));
 
         Assert.Contains("did not answer within 1s", exception.Message);
+        Assert.True(exception.IsTimeout);
     }
 
     [Fact]

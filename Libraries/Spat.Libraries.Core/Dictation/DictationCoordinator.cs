@@ -226,13 +226,26 @@ public sealed class DictationCoordinator : IDictationCoordinator
                 promptTitle = prompt.Title;
                 var rendered = PromptRenderer.Render(prompt.Instructions, transcription);
 
-                finalText = (await _textGeneration
-                    .CompleteAsync(rendered, cancellationToken)
-                    .ConfigureAwait(false)).Trim();
+                string? processed;
 
-                if (!string.IsNullOrWhiteSpace(finalText))
+                try
                 {
-                    historyEntry.Text = finalText;
+                    processed = (await _textGeneration
+                        .CompleteAsync(rendered, cancellationToken)
+                        .ConfigureAwait(false)).Trim();
+                }
+                catch (AiEndpointException ex) when (ex.IsTimeout)
+                {
+                    // The words are already on hand, so a slow cleanup must not take them along:
+                    // inject the raw transcription instead of failing the whole dictation.
+                    _logger.LogWarning(ex, "Post-processing timed out; using the raw transcription.");
+                    processed = null;
+                }
+
+                if (!string.IsNullOrWhiteSpace(processed))
+                {
+                    finalText = processed;
+                    historyEntry.Text = processed;
                     historyEntry.Transcription = transcription;
                     historyEntry.PromptTitle = promptTitle;
                     historyEntry.DurationMs = (long)_timeProvider.GetElapsedTime(started, _timeProvider.GetTimestamp()).TotalMilliseconds;

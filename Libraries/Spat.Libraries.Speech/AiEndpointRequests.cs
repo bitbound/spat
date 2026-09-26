@@ -63,7 +63,8 @@ internal static class AiEndpointRequests
         {
             logger.LogError("The AI endpoint at {Url} did not answer within {Seconds}s.", request.RequestUri, timeout.TotalSeconds);
             throw new AiEndpointException(
-                $"The AI endpoint at {request.RequestUri} did not answer within {timeout.TotalSeconds:0.##}s.");
+                $"The AI endpoint at {request.RequestUri} did not answer within {timeout.TotalSeconds:0.##}s.",
+                isTimeout: true);
         }
         catch (Exception ex) when (ex is HttpRequestException or TimeoutException)
         {
