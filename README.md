@@ -32,9 +32,6 @@ appears in the status bar; clicking it downloads the new build, swaps it over th
 executable, and relaunches — same location, same name, nothing to reinstall. Turn the check off
 under **Settings → Check GitHub Releases for updates**.
 
-The release also ships `spat-windows-x64-aot.zip`, a Native AOT build. It starts faster but updates
-only by re-downloading the archive yourself, since the in-place updater targets the single-file exe.
-
 Once Spat is running it lives in the system tray. Open **Settings**, fill in the sections below,
 then press your hotkey and start talking.
 
@@ -114,26 +111,23 @@ dotnet run --project tests/Spat.Tests/Spat.Tests.csproj
 
 ## Publish Targets
 
-### Release build (single-file, self-updating)
+The shipped build is a single self-contained exe; the project file carries the defaults
+(`RuntimeIdentifier`, `SelfContained`, `PublishSingleFile`, compression).
 
 ```
 dotnet publish Spat/Spat.csproj -c Release -o ./artifacts
 ```
 
-The project file carries the single-file defaults (`RuntimeIdentifier`, `SelfContained`,
-`PublishSingleFile`, compression), so this yields one `spat.exe`. The release workflow renames it
-to `spat-x64.exe` and publishes that as the GitHub Release asset; the in-app updater looks for
-exactly that name (`ReleaseAssetSelector.AssetName`, pinned by a unit test).
+The release workflow runs exactly this, renames the result to `spat-x64.exe`, and publishes it as
+the GitHub Release asset; the in-app updater looks for exactly that name
+(`ReleaseAssetSelector.AssetName`, pinned by a unit test).
 
-### Native AOT
+For a local build, `Spat/Properties/PublishProfiles/win-x64.pubxml` does the same publish and
+drops the exe in `%USERPROFILE%\Apps\`:
 
 ```
-dotnet publish Spat/Spat.csproj -p:PublishProfile=nativeaot -c Release
+dotnet publish Spat/Spat.csproj -c Release -p:PublishProfile=win-x64
 ```
-
-Produces a single `spat.exe` (with three native Avalonia/Skia DLLs next to it). Needs the C++
-toolchain from the Visual Studio "Desktop development with C++" workload; run it from a Developer
-Command Prompt so the linker is found.
 
 ## License
 

@@ -47,29 +47,12 @@ jobs:
           --output ./artifacts
           -p:Version=${{ steps.version.outputs.version }}
 
-      - name: Publish NativeAOT executable
-        run: >-
-          dotnet publish Spat/Spat.csproj
-          --configuration Release
-          -p:PublishProfile=nativeaot
-          -p:Version=${{ steps.version.outputs.version }}
-
-      - name: Package NativeAOT archive
-        shell: pwsh
-        run: |
-          Compress-Archive `
-            -Path Spat/bin/Release/publish/nativeaot/spat.exe, `
-                  Spat/bin/Release/publish/nativeaot/av_libglesv2.dll, `
-                  Spat/bin/Release/publish/nativeaot/libSkiaSharp.dll, `
-                  Spat/bin/Release/publish/nativeaot/libHarfBuzzSharp.dll `
-            -DestinationPath ./spat-windows-x64-aot.zip
-
       - name: Prepare release asset
         shell: pwsh
         run: |
           # The in-app updater downloads this asset and runs it under this exact name, so the
           # published file must be $env:ASSET_NAME with the .exe extension.
-          Rename-Item ./artifacts/spat.exe $env:ASSET_NAME
+          Rename-Item (Get-ChildItem ./artifacts -Filter spat.exe) $env:ASSET_NAME
 
       - name: Create GitHub release
         env:
@@ -81,7 +64,6 @@ jobs:
           $releaseArgs = @(
             $env:TAG,
             "./artifacts/$env:ASSET_NAME",
-            './spat-windows-x64-aot.zip',
             '--title', $env:TAG,
             '--generate-notes'
           )
