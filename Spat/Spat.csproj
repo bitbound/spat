@@ -3,16 +3,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyName>spat</AssemblyName>
+    <ApplicationIcon>Assets\appicon.ico</ApplicationIcon>
     <Description>Windows voice typing with global hotkeys and OpenAI-compatible speech-to-text.</Description>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <!--
-    The shipped build is one self-contained exe that the in-app updater can swap in place
-    (see Spat.Libraries.Updater). The NativeAOT profile overrides PublishSingleFile.
-  -->
   <PropertyGroup>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
