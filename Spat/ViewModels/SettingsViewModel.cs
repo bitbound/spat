@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using Spat.Libraries.Core.Audio;
+using Spat.Libraries.Core.CustomDictionary;
 using Spat.Libraries.Core.Input;
 using Spat.Libraries.Core.Platform;
 using Spat.Libraries.Core.Prompts;
@@ -16,6 +17,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
 {
     private readonly IAudioCaptureDeviceEnumerator _devices;
     private readonly IPromptService _prompts;
+    private readonly ICustomDictionaryService _dictionary;
     private readonly ISettingsService _settings;
     private readonly ISpeechToTextClient _speechToText;
     private readonly ITextGenerationClient _textGeneration;
@@ -171,6 +173,15 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
     private PromptOption? _selectedPrompt;
 
     [ObservableProperty]
+    private ObservableCollection<CustomDictionaryEntry> _dictionaryEntries = [];
+
+    [ObservableProperty]
+    private bool _dictionaryHintFirstPassEnabled = true;
+
+    [ObservableProperty]
+    private bool _dictionaryIncludeInPostProcessingEnabled = true;
+
+    [ObservableProperty]
     private string _promptTitle = string.Empty;
 
     [ObservableProperty]
@@ -197,6 +208,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         ISettingsService settings,
         IAudioCaptureDeviceEnumerator devices,
         IPromptService prompts,
+        ICustomDictionaryService dictionary,
         ISpeechToTextClient speechToText,
         ITextGenerationClient textGeneration,
         IAutostartService autostart,
@@ -206,6 +218,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         _settings = settings;
         _devices = devices;
         _prompts = prompts;
+        _dictionary = dictionary;
         _speechToText = speechToText;
         _textGeneration = textGeneration;
         _autostart = autostart;
@@ -243,6 +256,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
 
         LoadFromSettings();
         RefreshPrompts();
+        RefreshDictionaryEntries();
 
         _ = LoadDevicesAsync();
     }
@@ -393,6 +407,22 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
     }
 
     [RelayCommand]
+    private void AddDictionaryEntry()
+    {
+        DictionaryEntries.Add(new CustomDictionaryEntry());
+    }
+
+    // Blank or half-filled rows are dropped at save, so adding one costs nothing.
+    [RelayCommand]
+    private void RemoveDictionaryEntry(CustomDictionaryEntry? entry)
+    {
+        if (entry is not null)
+        {
+            DictionaryEntries.Remove(entry);
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveAsync()
     {
         SaveError = null;
@@ -438,6 +468,14 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         settings.PostProcessing.SelectedPromptId = SelectedPrompt?.Prompt.Id == TranscriptionPrompt.BuiltInId
             ? null
             : SelectedPrompt?.Prompt.Id;
+
+        settings.Dictionary.HintFirstPassEnabled = DictionaryHintFirstPassEnabled;
+        settings.Dictionary.IncludeInPostProcessingEnabled = DictionaryIncludeInPostProcessingEnabled;
+
+        await _dictionary.SaveAllAsync(DictionaryEntries);
+
+        // Incomplete rows are dropped at write, so the card has to show what actually survived.
+        RefreshDictionaryEntries();
 
         if (SelectedPrompt is { Prompt.IsBuiltIn: false } prompt)
         {
@@ -546,6 +584,9 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         PostModelId = settings.PostProcessing.ModelId;
         PostTimeoutSeconds = settings.PostProcessing.TimeoutSeconds;
 
+        DictionaryHintFirstPassEnabled = settings.Dictionary.HintFirstPassEnabled;
+        DictionaryIncludeInPostProcessingEnabled = settings.Dictionary.IncludeInPostProcessingEnabled;
+
         var options = settings.PostProcessing.Options;
 
         ThinkingMode = options.ThinkingEnabled switch
@@ -578,6 +619,11 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
 
         SelectedPrompt = PromptOptions.FirstOrDefault(option => option.Prompt.Id == selectedId)
             ?? PromptOptions.FirstOrDefault();
+    }
+
+    private void RefreshDictionaryEntries()
+    {
+        DictionaryEntries = new ObservableCollection<CustomDictionaryEntry>(_dictionary.GetAll());
     }
 
     private bool TryReadGenerationOptions(out TextGenerationOptions options, out string? error)

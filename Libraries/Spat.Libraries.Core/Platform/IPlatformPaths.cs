@@ -10,6 +10,8 @@ public interface IPlatformPaths
 
     string PromptsFilePath { get; }
 
+    string DictionaryFilePath { get; }
+
     string HistoryFilePath { get; }
 
     string AudioDirectory { get; }

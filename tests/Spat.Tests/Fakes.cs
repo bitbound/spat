@@ -67,6 +67,8 @@ public sealed class TestPlatformPaths : IPlatformPaths
 
     public string PromptsFilePath => "/config/spat/prompts.json";
 
+    public string DictionaryFilePath => "/config/spat/dictionary.json";
+
     public string HistoryFilePath => "/data/spat/history.json";
 
     public string AudioDirectory => "/data/spat/audio";
@@ -125,13 +127,16 @@ public sealed class FakeSpeechToTextClient : ISpeechToTextClient
 
     public List<byte[]> Received { get; } = [];
 
+    public List<string?> InitialPrompts { get; } = [];
+
     public List<string?> ListEndpoints { get; } = [];
 
     public Exception? Throw { get; set; }
 
-    public Task<string> TranscribeAsync(byte[] wavBytes, CancellationToken cancellationToken = default)
+    public Task<string> TranscribeAsync(byte[] wavBytes, string? initialPrompt = null, CancellationToken cancellationToken = default)
     {
         Received.Add(wavBytes);
+        InitialPrompts.Add(initialPrompt);
 
         if (Throw is not null)
         {

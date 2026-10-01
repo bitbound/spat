@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Spat.ViewModels"
+             xmlns:cd="using:Spat.Libraries.Core.CustomDictionary"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="900"
@@ -206,6 +207,56 @@
 
             <TextBlock Text="{Binding SpeechModelsMessage}" Classes="caption"
                        IsVisible="{Binding ModelSelectionEnabled}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="Card">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Custom dictionary" />
+            <TextBlock Classes="caption"
+                       TextWrapping="Wrap"
+                       Text="When the transcription contains one of these phrases, the term is typed instead. Whole words and phrases only, case-insensitive. Example: &quot;control are&quot; becomes &quot;ControlR&quot;." />
+
+            <ItemsControl ItemsSource="{Binding DictionaryEntries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="cd:CustomDictionaryEntry">
+                  <Grid ColumnDefinitions="*,Auto,*,Auto,Auto" ColumnSpacing="6" Margin="0,0,0,6">
+                    <TextBox Text="{Binding From}"
+                             PlaceholderText="what you hear, e.g. control are" />
+                    <TextBlock Grid.Column="1"
+                               Text="&#x2192;"
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Column="2"
+                             Text="{Binding To}"
+                             PlaceholderText="what to type, e.g. ControlR" />
+                    <CheckBox Grid.Column="3"
+                              IsChecked="{Binding Enabled}"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="Off keeps the entry without applying it" />
+                    <Button Grid.Column="4"
+                            Content="Remove"
+                            Classes="Error VariantText Small"
+                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveDictionaryEntryCommand}"
+                            CommandParameter="{Binding}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Button Content="Add entry"
+                    Classes="Primary VariantOutlined"
+                    HorizontalAlignment="Left"
+                    Command="{Binding AddDictionaryEntryCommand}" />
+
+            <CheckBox Content="Suggest the terms to the speech model when transcribing"
+                      IsChecked="{Binding DictionaryHintFirstPassEnabled}"
+                      ToolTip.Tip="Sends the terms as an initial_prompt hint. Endpoints that reject the hint are retried without it." />
+
+            <CheckBox Content="Include the entries in the post-processing prompt"
+                      IsChecked="{Binding DictionaryIncludeInPostProcessingEnabled}"
+                      ToolTip.Tip="Only applies when post-processing is configured." />
+
+            <TextBlock Classes="caption" Text="Entries are saved with the Save button." />
           </StackPanel>
         </Border>
 

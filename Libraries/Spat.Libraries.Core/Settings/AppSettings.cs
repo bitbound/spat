@@ -78,4 +78,24 @@ public sealed class AppSettings
     public SpeechToTextSettings SpeechToText { get; set; } = new();
 
     public PostProcessingSettings PostProcessing { get; set; } = new();
+
+    public CustomDictionarySettings Dictionary { get; set; } = new();
+}
+
+/// <summary>
+/// Where the custom dictionary reaches beyond its always-on deterministic replacement. The entries
+/// themselves live in dictionary.json rather than in settings.
+/// </summary>
+public sealed class CustomDictionarySettings
+{
+    /// <summary>
+    /// Sends the replacement terms to the transcription endpoint as a recognition hint
+    /// (initial_prompt). Endpoints that reject the field are retried without it.
+    /// </summary>
+    public bool HintFirstPassEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Adds the entry list to the post-processing prompt so the text model applies it too.
+    /// </summary>
+    public bool IncludeInPostProcessingEnabled { get; set; } = true;
 }

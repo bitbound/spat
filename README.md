@@ -15,6 +15,7 @@ Spat is a small desktop utility for Windows. It records the microphone, sends th
 - Tap the hotkey to start and stop, or hold it down to talk.
 - Transcription through any endpoint that speaks the OpenAI `/v1/audio/transcriptions` API.
 - An optional second pass through a text model to clean up the transcript before it gets typed.
+- A custom dictionary that swaps misheard phrases before typing, so "control are" becomes "ControlR".
 - Text is injected with `SendInput`, so it lands in the focused application like typed keystrokes.
 - A history of past dictations with optional recording playback.
 - Ships as one self-contained single-file exe that updates itself in place from GitHub Releases.
@@ -88,6 +89,7 @@ under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 | --- | --- |
 | `%APPDATA%\spat\settings.json` | Settings |
 | `%APPDATA%\spat\prompts.json` | Post-processing prompts |
+| `%APPDATA%\spat\dictionary.json` | Custom dictionary entries |
 | `%APPDATA%\spat\logs\spat.log` | Log file |
 | `%LOCALAPPDATA%\spat\history.json` | Dictation history |
 | `%LOCALAPPDATA%\spat\audio\` | Saved recordings |

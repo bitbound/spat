@@ -14,7 +14,7 @@ public class OpenAiSpeechToTextClientTests
     {
         var (client, handler) = Create(Speech(endpoint: "https://api.example.test/"), _ => StubHttpMessageHandler.Json("""{"text":"ok"}"""));
 
-        await client.TranscribeAsync([1, 2, 3], TestContext.Current.CancellationToken);
+        await client.TranscribeAsync([1, 2, 3], initialPrompt: null, TestContext.Current.CancellationToken);
 
         Assert.Equal("https://api.example.test/v1/audio/transcriptions", handler.RequestUris[0]);
         Assert.Equal("Bearer secret-key", handler.AuthorizationValues[0]);
@@ -25,7 +25,7 @@ public class OpenAiSpeechToTextClientTests
     {
         var (client, handler) = Create(Speech(), _ => StubHttpMessageHandler.Json("""{"text":"ok"}"""));
 
-        await client.TranscribeAsync([1, 2, 3], TestContext.Current.CancellationToken);
+        await client.TranscribeAsync([1, 2, 3], initialPrompt: null, TestContext.Current.CancellationToken);
 
         var body = handler.RequestBodies[0];
 
@@ -45,10 +45,55 @@ public class OpenAiSpeechToTextClientTests
 
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json("""{"text":"ok"}"""));
 
-        await client.TranscribeAsync([1], TestContext.Current.CancellationToken);
+        await client.TranscribeAsync([1], initialPrompt: null, TestContext.Current.CancellationToken);
 
         Assert.Contains("name=language", handler.RequestBodies[0]);
         Assert.Contains("en-US", handler.RequestBodies[0]);
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WhenAHintIsGiven_SendsTheInitialPromptField()
+    {
+        var (client, handler) = Create(Speech(), _ => StubHttpMessageHandler.Json("""{"text":"ok"}"""));
+
+        await client.TranscribeAsync([1], "ControlR, Spat", TestContext.Current.CancellationToken);
+
+        Assert.Contains("name=initial_prompt", handler.RequestBodies[0]);
+        Assert.Contains("ControlR, Spat", handler.RequestBodies[0]);
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WhenTheHintIsRejected_RetriesOnceWithoutIt()
+    {
+        var attempts = 0;
+
+        var (client, handler) = Create(Speech(), _ =>
+        {
+            attempts++;
+
+            return attempts == 1
+                ? StubHttpMessageHandler.Json("""{"error":"unknown field initial_prompt"}""", HttpStatusCode.BadRequest)
+                : StubHttpMessageHandler.Json("""{"text":"ok"}""");
+        });
+
+        var text = await client.TranscribeAsync([1], "ControlR", TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", text);
+        Assert.Equal(2, attempts);
+        Assert.Contains("name=initial_prompt", handler.RequestBodies[0]);
+        Assert.DoesNotContain("name=initial_prompt", handler.RequestBodies[1]);
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WhenTheHintlessRetryIsRejected_ThrowsFromTheRetry()
+    {
+        var (client, _) = Create(Speech(), _ => StubHttpMessageHandler.Json("""{"error":"bad audio"}""", HttpStatusCode.BadRequest));
+
+        var exception = await Assert.ThrowsAsync<AiEndpointException>(
+            () => client.TranscribeAsync([1], "ControlR", TestContext.Current.CancellationToken));
+
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Contains("bad audio", exception.Detail);
     }
 
     [Fact]
@@ -56,7 +101,7 @@ public class OpenAiSpeechToTextClientTests
     {
         var (client, _) = Create(Speech(), _ => StubHttpMessageHandler.Json("""{"text":"  hello  there "}"""));
 
-        var text = await client.TranscribeAsync([1], TestContext.Current.CancellationToken);
+        var text = await client.TranscribeAsync([1], initialPrompt: null, TestContext.Current.CancellationToken);
 
         Assert.Equal("hello  there", text);
     }
@@ -67,7 +112,7 @@ public class OpenAiSpeechToTextClientTests
         var (client, _) = Create(Speech(), _ => StubHttpMessageHandler.Json("""{"error":"bad model"}""", HttpStatusCode.BadRequest));
 
         var exception = await Assert.ThrowsAsync<AiEndpointException>(
-            () => client.TranscribeAsync([1], TestContext.Current.CancellationToken));
+            () => client.TranscribeAsync([1], initialPrompt: null, TestContext.Current.CancellationToken));
 
         Assert.Equal(400, exception.StatusCode);
         Assert.Contains("bad model", exception.Detail);
@@ -82,7 +127,7 @@ public class OpenAiSpeechToTextClientTests
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json("{}"));
 
         await Assert.ThrowsAsync<AiEndpointException>(
-            () => client.TranscribeAsync([1], TestContext.Current.CancellationToken));
+            () => client.TranscribeAsync([1], initialPrompt: null, TestContext.Current.CancellationToken));
 
         Assert.Empty(handler.RequestUris);
     }
@@ -96,7 +141,7 @@ public class OpenAiSpeechToTextClientTests
 
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json("""{"text":"ok"}"""));
 
-        var text = await client.TranscribeAsync([1], TestContext.Current.CancellationToken);
+        var text = await client.TranscribeAsync([1], initialPrompt: null, TestContext.Current.CancellationToken);
 
         Assert.Equal("ok", text);
         Assert.DoesNotContain("name=model", handler.RequestBodies[0]);
@@ -110,7 +155,7 @@ public class OpenAiSpeechToTextClientTests
 
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json("""{"text":"ok"}"""));
 
-        await client.TranscribeAsync([1], TestContext.Current.CancellationToken);
+        await client.TranscribeAsync([1], initialPrompt: null, TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("name=model", handler.RequestBodies[0]);
     }

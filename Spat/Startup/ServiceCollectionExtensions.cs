@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Spat.Libraries.Core.Audio;
+using Spat.Libraries.Core.CustomDictionary;
 using Spat.Libraries.Core.Dictation;
 using Spat.Libraries.Core.History;
 using Spat.Libraries.Core.Input;
@@ -52,6 +53,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IPromptService, PromptService>();
+        services.AddSingleton<ICustomDictionaryService, CustomDictionaryService>();
         services.AddSingleton<IRecordingStore, RecordingStore>();
         services.AddSingleton<IHistoryService, HistoryService>();
 

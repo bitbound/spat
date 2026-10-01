@@ -14,6 +14,8 @@ public sealed class PlatformPaths : IPlatformPaths
 
     public string PromptsFilePath => Path.Combine(ConfigDirectory, "prompts.json");
 
+    public string DictionaryFilePath => Path.Combine(ConfigDirectory, "dictionary.json");
+
     public string HistoryFilePath => Path.Combine(DataDirectory, "history.json");
 
     public string AudioDirectory => Path.Combine(DataDirectory, "audio");

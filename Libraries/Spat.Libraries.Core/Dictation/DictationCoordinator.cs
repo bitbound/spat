@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Spat.Libraries.Core.Audio;
+using Spat.Libraries.Core.CustomDictionary;
 using Spat.Libraries.Core.History;
 using Spat.Libraries.Core.Input;
 using Spat.Libraries.Core.Prompts;
@@ -23,6 +24,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
     private readonly IRecordingStore _recordings;
     private readonly ISettingsService _settings;
     private readonly IPromptService _prompts;
+    private readonly ICustomDictionaryService _dictionary;
     private readonly IHistoryService _history;
     private readonly ISpeechToTextClient _speechToText;
     private readonly ITextGenerationClient _textGeneration;
@@ -36,6 +38,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
         ISpeechToTextClient speechToText,
         ITextGenerationClient textGeneration,
         IPromptService prompts,
+        ICustomDictionaryService dictionary,
         IHistoryService history,
         ITextInputInjector injector,
         ISettingsService settings,
@@ -47,6 +50,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
         _speechToText = speechToText;
         _textGeneration = textGeneration;
         _prompts = prompts;
+        _dictionary = dictionary;
         _history = history;
         _injector = injector;
         _settings = settings;
@@ -182,8 +186,16 @@ public sealed class DictationCoordinator : IDictationCoordinator
             SetState(DictationState.Transcribing);
 
             var wav = PcmProcessor.ToWav(pcm);
-            var transcription = await _speechToText.TranscribeAsync(wav, cancellationToken).ConfigureAwait(false);
-            var finalText = transcription.Trim();
+            var initialPrompt = _settings.Current.Dictionary.HintFirstPassEnabled
+                ? _dictionary.BuildHintPrompt()
+                : null;
+            var transcription = (await _speechToText
+                .TranscribeAsync(wav, initialPrompt, cancellationToken)
+                .ConfigureAwait(false)).Trim();
+
+            // The dictionary replacement runs before history is written, so the entry shows what got
+            // typed. Transcription keeps what the model actually heard.
+            var finalText = _dictionary.Replace(transcription);
             var promptTitle = (string?)null;
 
             if (string.IsNullOrWhiteSpace(finalText))
@@ -206,6 +218,11 @@ public sealed class DictationCoordinator : IDictationCoordinator
                 DurationMs = durationMs,
             };
 
+            if (!string.Equals(finalText, transcription, StringComparison.Ordinal))
+            {
+                historyEntry.Transcription = transcription;
+            }
+
             try
             {
                 await _history.AddAsync(historyEntry, cancellationToken).ConfigureAwait(false);
@@ -224,7 +241,10 @@ public sealed class DictationCoordinator : IDictationCoordinator
 
                 var prompt = _prompts.GetSelected();
                 promptTitle = prompt.Title;
-                var rendered = PromptRenderer.Render(prompt.Instructions, transcription);
+                var dictionaryBlock = _settings.Current.Dictionary.IncludeInPostProcessingEnabled
+                    ? _dictionary.BuildCorrectionBlock()
+                    : null;
+                var rendered = PromptRenderer.Render(prompt.Instructions, transcription, dictionaryBlock);
 
                 string? processed;
 

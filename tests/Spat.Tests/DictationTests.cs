@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Spat.Libraries.Core.Audio;
+using Spat.Libraries.Core.CustomDictionary;
 using Spat.Libraries.Core.Dictation;
 using Spat.Libraries.Core.History;
 using Spat.Libraries.Core.Prompts;
@@ -16,6 +17,7 @@ public class DictationCoordinatorTests
     private readonly FakeSpeechToTextClient _speechToText = new();
     private readonly FakeTextGenerationClient _textGeneration = new();
     private readonly FakeTextInputInjector _injector = new();
+    private readonly CustomDictionaryService _dictionary;
     private readonly SettingsService _settings;
     private readonly HistoryService _history;
     private readonly DictationCoordinator _coordinator;
@@ -24,6 +26,7 @@ public class DictationCoordinatorTests
     {
         _settings = TestSettings.Create(_fileStore, TestSettings.ConfiguredSst());
         _recordings = new RecordingStore(new TestPlatformPaths(), _fileStore);
+        _dictionary = new CustomDictionaryService(new TestPlatformPaths(), _fileStore);
         _history = new HistoryService(new TestPlatformPaths(), _fileStore, _recordings, _settings);
         _coordinator = Create(settings: _settings);
     }
@@ -323,6 +326,86 @@ public class DictationCoordinatorTests
         AssertNoAudioFiles();
     }
 
+    [Fact]
+    public async Task StopAsync_WithADictionaryEntry_TypesTheTermAndKeepsTheRawTranscription()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        await _dictionary.CreateAsync("control are", "ControlR", ct);
+        _speechToText.Text = "open control are settings";
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.Equal(["open ControlR settings"], _injector.Typed);
+
+        var entry = Assert.Single(_history.GetAll());
+        Assert.Equal("open ControlR settings", entry.Text);
+        Assert.Equal("open control are settings", entry.Transcription);
+    }
+
+    [Fact]
+    public async Task StopAsync_WithDictionaryEntries_SendsTheTermsAsAHint()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        await _dictionary.CreateAsync("control are", "ControlR", ct);
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.Equal("ControlR", Assert.Single(_speechToText.InitialPrompts));
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenTheHintIsDisabled_SendsNoHint()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.Dictionary.HintFirstPassEnabled = false;
+        await _dictionary.CreateAsync("control are", "ControlR", ct);
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.Null(Assert.Single(_speechToText.InitialPrompts));
+    }
+
+    [Fact]
+    public async Task StopAsync_WithPostProcessing_FeedsTheEntriesToThePrompt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        await _dictionary.CreateAsync("control are", "ControlR", ct);
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        var prompt = Assert.Single(_textGeneration.Prompts);
+        Assert.Contains("\"control are\" -> \"ControlR\"", prompt);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingExcludesTheDictionary_OmitsTheCorrectionBlock()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _settings.Current.Dictionary.IncludeInPostProcessingEnabled = false;
+        await _dictionary.CreateAsync("control are", "ControlR", ct);
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        var prompt = Assert.Single(_textGeneration.Prompts);
+        Assert.DoesNotContain("\"ControlR\"", prompt);
+    }
+
     private void AssertNoAudioFiles()
     {
         Assert.DoesNotContain(_fileStore.Paths, path => path.StartsWith(new TestPlatformPaths().AudioDirectory, StringComparison.Ordinal));
@@ -338,6 +421,7 @@ public class DictationCoordinatorTests
             _speechToText,
             _textGeneration,
             prompts,
+            _dictionary,
             _history,
             _injector,
             settings,

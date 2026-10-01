@@ -17,7 +17,7 @@ public sealed class OpenAiSpeechToTextClient(HttpClient httpClient, ISettingsSer
     /// </summary>
     private static readonly TimeSpan TranscriptionTimeout = TimeSpan.FromMinutes(5);
 
-    public async Task<string> TranscribeAsync(byte[] wavBytes, CancellationToken cancellationToken = default)
+    public async Task<string> TranscribeAsync(byte[] wavBytes, string? initialPrompt = null, CancellationToken cancellationToken = default)
     {
         var speech = settings.Current.SpeechToText;
 
@@ -30,11 +30,9 @@ public sealed class OpenAiSpeechToTextClient(HttpClient httpClient, ISettingsSer
         // left out entirely even when a stale id is still saved.
         var model = speech.ModelSelectionEnabled ? speech.ModelId : null;
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, AiEndpoint.BuildUri(speech.Endpoint, "/audio/transcriptions"));
-        request.Content = BuildForm(model, speech.Language, wavBytes);
-        AiEndpointRequests.ApplyAuthorization(request, speech.ApiKey);
-
-        var body = await AiEndpointRequests.SendAsync(httpClient, request, logger, TranscriptionTimeout, cancellationToken).ConfigureAwait(false);
+        var body = !string.IsNullOrWhiteSpace(initialPrompt)
+            ? await SendWithHintFallback(model, speech, initialPrompt, wavBytes, cancellationToken).ConfigureAwait(false)
+            : await SendAsync(model, speech, initialPrompt: null, wavBytes, cancellationToken).ConfigureAwait(false);
 
         using var document = AiEndpointRequests.ParseResponse(body);
 
@@ -50,12 +48,37 @@ public sealed class OpenAiSpeechToTextClient(HttpClient httpClient, ISettingsSer
         return (text ?? string.Empty).Trim();
     }
 
+    // Endpoints without initial_prompt support answer 4xx for the whole upload. Losing a take to a
+    // recognition hint is not an option, so the take goes back out without it.
+    private async Task<string> SendWithHintFallback(string? model, SpeechToTextSettings speech, string? initialPrompt, byte[] wavBytes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendAsync(model, speech, initialPrompt, wavBytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch (AiEndpointException ex) when (ex.StatusCode is >= 400 and <= 499)
+        {
+            logger.LogWarning(ex, "The endpoint rejected the request carrying the recognition hint; retrying without it.");
+
+            return await SendAsync(model, speech, initialPrompt: null, wavBytes, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<string> SendAsync(string? model, SpeechToTextSettings speech, string? initialPrompt, byte[] wavBytes, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, AiEndpoint.BuildUri(speech.Endpoint, "/audio/transcriptions"));
+        request.Content = BuildForm(model, speech.Language, initialPrompt, wavBytes);
+        AiEndpointRequests.ApplyAuthorization(request, speech.ApiKey);
+
+        return await AiEndpointRequests.SendAsync(httpClient, request, logger, TranscriptionTimeout, cancellationToken).ConfigureAwait(false);
+    }
+
     public Task<IReadOnlyList<AiModel>> ListModelsAsync(string? endpoint, string? apiKey, CancellationToken cancellationToken = default)
     {
         return AiEndpointRequests.ListModelsAsync(httpClient, endpoint, apiKey, logger, cancellationToken);
     }
 
-    private static MultipartFormDataContent BuildForm(string? model, string? language, byte[] wavBytes)
+    private static MultipartFormDataContent BuildForm(string? model, string? language, string? initialPrompt, byte[] wavBytes)
     {
         var form = new MultipartFormDataContent();
 
@@ -73,6 +96,11 @@ public sealed class OpenAiSpeechToTextClient(HttpClient httpClient, ISettingsSer
         if (!string.IsNullOrWhiteSpace(language))
         {
             form.Add(new StringContent(language), "language");
+        }
+
+        if (!string.IsNullOrWhiteSpace(initialPrompt))
+        {
+            form.Add(new StringContent(initialPrompt), "initial_prompt");
         }
 
         return form;
