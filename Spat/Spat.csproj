@@ -48,4 +48,7 @@
     <ProjectReference Include="..\Libraries\Spat.Libraries.Native.Windows\Spat.Libraries.Native.Windows.csproj" />
     <ProjectReference Include="..\Libraries\Spat.Libraries.Updater\Spat.Libraries.Updater.csproj" />
   </ItemGroup>
+
+  <!-- Authenticode-signs everything bundled into the single-file EXE (see build\WindowsSign.Build.targets). -->
+  <Import Project="..\build\WindowsSign.Build.targets" />
 </Project>

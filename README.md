@@ -131,6 +131,31 @@ drops the exe in `%USERPROFILE%\Apps\`:
 dotnet publish Spat/Spat.csproj -c Release -p:PublishProfile=win-x64
 ```
 
+## Code Signing
+
+Every publish (local or in CI) Authenticode-signs the binaries that go into the
+single-file bundle and the final exe, using the self-signed `CN=Bitbound`
+certificate from the current user's Windows certificate store
+(`build/WindowsSign.Build.targets`, with the certificate lookup in
+`build/Find-SigningCert.ps1`). Signing needs the
+[Sign CLI](https://github.com/dotnet/sign) global tool:
+
+```
+dotnet tool install --global sign --prerelease
+```
+
+Skip signing with `-p:EnableSigning=false`. The certificate subject, timestamp
+server, and description can be overridden with the `SignCertSubject`,
+`SignTimestampUrl`, `SignDescription`, and `SignDescriptionUrl` properties.
+
+The release workflow signs too: it imports the PFX from two repository secrets
+into the runner's certificate store before publishing:
+
+- `SIGN_CERT_PFX_BASE64` — the `CN=Bitbound` PFX (with private key) as a
+  base64 string:
+  `[Convert]::ToBase64String([IO.File]::ReadAllBytes('bitbound.pfx')) | Set-Clipboard`
+- `SIGN_CERT_PASSWORD` — the PFX password.
+
 ## License
 
 Spat is licensed under the [GPL-3.0](LICENSE).

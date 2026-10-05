@@ -29,6 +29,24 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Install Sign CLI
+        # Same tool build\WindowsSign.Build.targets uses locally; only prereleases are published.
+        run: dotnet tool install --global sign --prerelease
+
+      - name: Import signing certificate
+        env:
+          SIGN_CERT_PFX_BASE64: ${{ secrets.SIGN_CERT_PFX_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        shell: pwsh
+        run: |
+          if (-not $env:SIGN_CERT_PFX_BASE64) { throw 'Repository secret SIGN_CERT_PFX_BASE64 is not set (base64 of the Bitbound code-signing PFX).' }
+          if (-not $env:SIGN_CERT_PASSWORD) { throw 'Repository secret SIGN_CERT_PASSWORD is not set (password of the Bitbound code-signing PFX).' }
+          $pfx = Join-Path $env:RUNNER_TEMP 'bitbound.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_PFX_BASE64))
+          # The build's signing targets look for CN=Bitbound in the current user's Personal store.
+          Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString $env:SIGN_CERT_PASSWORD -AsPlainText -Force) | Out-Null
+          Remove-Item $pfx
+
       - name: Calculate version
         id: version
         shell: pwsh
