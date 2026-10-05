@@ -72,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGlobalHotkeySource, WindowsGlobalHotkeySource>();
         services.AddSingleton<ISystemColorSchemeSource, RegistryColorSchemeSource>();
         services.AddSingleton<IAutostartService, RegistryAutostartService>();
+        services.AddSingleton<ICertificateTrustService, BitboundCertificateTrustService>();
 
         services.AddSingleton<IUpdateService, GitHubReleaseUpdateService>();
         services.AddSingleton<UpdateHandoffRunner>();

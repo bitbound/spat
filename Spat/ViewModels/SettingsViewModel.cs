@@ -22,6 +22,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
     private readonly ISpeechToTextClient _speechToText;
     private readonly ITextGenerationClient _textGeneration;
     private readonly IAutostartService _autostart;
+    private readonly ICertificateTrustService _certTrust;
     private readonly FileLoggerProvider _fileLogger;
     private readonly LogLevelSwitch _logLevel;
 
@@ -202,6 +203,15 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
     [ObservableProperty]
     private string? _shortcutMessage;
 
+    [ObservableProperty]
+    private bool _isPublisherTrusted;
+
+    [ObservableProperty]
+    private bool _isTrustingPublisher;
+
+    [ObservableProperty]
+    private string? _publisherTrustMessage;
+
     private DispatcherTimer? _saveMessageTimer;
 
     public SettingsViewModel(
@@ -212,6 +222,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         ISpeechToTextClient speechToText,
         ITextGenerationClient textGeneration,
         IAutostartService autostart,
+        ICertificateTrustService certTrust,
         FileLoggerProvider fileLogger,
         LogLevelSwitch logLevel)
     {
@@ -222,6 +233,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         _speechToText = speechToText;
         _textGeneration = textGeneration;
         _autostart = autostart;
+        _certTrust = certTrust;
         _fileLogger = fileLogger;
         _logLevel = logLevel;
     }
@@ -257,6 +269,7 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         LoadFromSettings();
         RefreshPrompts();
         RefreshDictionaryEntries();
+        RefreshPublisherTrustState();
 
         _ = LoadDevicesAsync();
     }
@@ -532,6 +545,44 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
         catch (Exception ex)
         {
             SaveError = $"Could not open the log file: {ex.Message}";
+        }
+    }
+
+    // Spat is signed with a self-signed cert that public machines have no reason to trust, so the
+    // settings page offers to plant the public key in the per-user trust stores (no elevation).
+    private void RefreshPublisherTrustState()
+    {
+        try
+        {
+            IsPublisherTrusted = _certTrust.IsPublisherTrusted();
+        }
+        catch (Exception ex)
+        {
+            PublisherTrustMessage = $"Could not read the certificate stores: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task TrustPublisherAsync()
+    {
+        PublisherTrustMessage = null;
+        IsTrustingPublisher = true;
+
+        try
+        {
+            // Certificate store writes can hit slow group-policy callbacks, so keep the UI free.
+            await Task.Run(_certTrust.TrustPublisher);
+
+            IsPublisherTrusted = true;
+            PublisherTrustMessage = "Bitbound is now trusted for this user account. Already-downloaded copies of Spat show Bitbound as the verified publisher.";
+        }
+        catch (Exception ex)
+        {
+            PublisherTrustMessage = $"Could not trust the certificate: {ex.Message}";
+        }
+        finally
+        {
+            IsTrustingPublisher = false;
         }
     }
 

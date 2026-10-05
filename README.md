@@ -156,6 +156,21 @@ into the runner's certificate store before publishing:
   `[Convert]::ToBase64String([IO.File]::ReadAllBytes('bitbound.pfx')) | Set-Clipboard`
 - `SIGN_CERT_PASSWORD` — the PFX password.
 
+Because the certificate is self-signed, fresh machines don't trust it, so Explorer
+and SmartScreen still flag the signature. The app carries the certificate's public
+key (`Libraries/Spat.Libraries.Native.Windows/Assets/bitbound.cer`) and Settings has
+a **Trust Bitbound publisher** button that adds it to the current user's Trusted
+Root store — no admin rights needed, though Windows always asks for a
+Windows Hello/UAC-style confirmation before trusting any certificate. After that,
+file properties show Bitbound as the verified publisher (SmartScreen reputation is
+a separate, paid-CA-only thing). Regenerate the .cer whenever the signing cert is
+rotated:
+
+```powershell
+$cert = Get-ChildItem Cert:\CurrentUser\My\18FC41D0A2E8190B6BEDCF70CEF1DAF18298BFA8
+[IO.File]::WriteAllBytes('Libraries\Spat.Libraries.Native.Windows\Assets\bitbound.cer', $cert.Export('Cert'))
+```
+
 ## License
 
 Spat is licensed under the [GPL-3.0](LICENSE).

@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Public key of the Bitbound code-signing cert, installed into the user's trust stores by
+         BitboundCertificateTrustService. Default manifest name: <RootNamespace>.Assets.bitbound.cer -->
+    <EmbeddedResource Include="Assets\bitbound.cer" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NAudio" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
   </ItemGroup>
