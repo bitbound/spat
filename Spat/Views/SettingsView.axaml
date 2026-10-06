@@ -246,20 +246,20 @@
             <TextBlock Classes="h2" Text="Custom dictionary" />
             <TextBlock Classes="caption"
                        TextWrapping="Wrap"
-                       Text="When the transcription contains one of these phrases, the term is typed instead. Whole words and phrases only, case-insensitive. Example: &quot;control are&quot; becomes &quot;ControlR&quot;." />
+                       Text="When the transcription contains one of these phrases, the term is typed instead. Whole words and phrases only, case-insensitive. Example: &quot;get hub&quot; becomes &quot;GitHub&quot;." />
 
             <ItemsControl ItemsSource="{Binding DictionaryEntries}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="cd:CustomDictionaryEntry">
                   <Grid ColumnDefinitions="*,Auto,*,Auto,Auto" ColumnSpacing="6" Margin="0,0,0,6">
                     <TextBox Text="{Binding From}"
-                             PlaceholderText="what you hear, e.g. control are" />
+                             PlaceholderText="what you hear, e.g. get hub" />
                     <TextBlock Grid.Column="1"
                                Text="&#x2192;"
                                VerticalAlignment="Center" />
                     <TextBox Grid.Column="2"
                              Text="{Binding To}"
-                             PlaceholderText="what to type, e.g. ControlR" />
+                             PlaceholderText="what to type, e.g. GitHub" />
                     <CheckBox Grid.Column="3"
                               IsChecked="{Binding Enabled}"
                               VerticalAlignment="Center"
