@@ -66,6 +66,8 @@ public sealed class DictationCoordinator : IDictationCoordinator
 
     public event EventHandler? StateChanged;
 
+    public event EventHandler<DictationLimitReachedEventArgs>? RecordingLimitReached;
+
     public async Task ToggleAsync(CancellationToken cancellationToken = default)
     {
         if (IsListening)
@@ -144,22 +146,37 @@ public sealed class DictationCoordinator : IDictationCoordinator
     {
         var started = _timeProvider.GetTimestamp();
         var pcm = PcmAudio.Empty;
+        var reachedLimit = false;
 
         try
         {
             using (endOfRecording)
             {
-                endOfRecording.CancelAfter(maxDuration);
+                // The limit gets a source of its own, linked to the one StopAsync cancels. Sharing a
+                // single source would leave no way to tell the two reasons apart after the fact.
+                using var limit = new CancellationTokenSource();
+                using var limitTimer = _timeProvider.CreateTimer(static state => CancelLimit((CancellationTokenSource)state!), limit, maxDuration, Timeout.InfiniteTimeSpan);
+                using var ended = CancellationTokenSource.CreateLinkedTokenSource(endOfRecording.Token, limit.Token);
 
                 pcm = await _recorder
-                    .RecordAsync(_settings.Current.InputDeviceId, endOfRecording.Token, maxDuration, cancellationToken)
+                    .RecordAsync(_settings.Current.InputDeviceId, ended.Token, maxDuration, cancellationToken)
                     .ConfigureAwait(false);
+
+                // A stop that lands in the same instant as the limit reads as the user's stop.
+                reachedLimit = limit.IsCancellationRequested
+                    && !endOfRecording.IsCancellationRequested
+                    && !cancellationToken.IsCancellationRequested;
             }
 
             lock (_gate)
             {
                 _endOfRecording = null;
                 _activeRun = null;
+            }
+
+            if (reachedLimit)
+            {
+                ReportLimitReached(maxDuration);
             }
 
             var silenceThreshold = Math.Clamp(
@@ -364,6 +381,28 @@ public sealed class DictationCoordinator : IDictationCoordinator
         return finiteSamples == 0
             ? (0, 0, 0)
             : (peak, (float)Math.Sqrt(sumOfSquares / finiteSamples), (float)activeSamples / finiteSamples);
+    }
+
+    // The timer can fire while a finished run is being torn down, so the source may already be gone.
+    // That race is the normal outcome at the end of a take, not a fault.
+    private static void CancelLimit(CancellationTokenSource limit)
+    {
+        try
+        {
+            limit.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    // The take survives, so this is a notice about what was captured, not a failure. How it is shown
+    // is left to the listener.
+    private void ReportLimitReached(TimeSpan limit)
+    {
+        _logger.LogWarning("The recording hit its {Seconds:0} second limit and stopped.", limit.TotalSeconds);
+
+        RecordingLimitReached?.Invoke(this, new DictationLimitReachedEventArgs(limit));
     }
 
     private void SetState(DictationState state)

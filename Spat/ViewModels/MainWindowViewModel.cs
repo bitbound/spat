@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
     private readonly INavigationProvider _navigation;
     private readonly IServiceProvider _serviceProvider;
     private readonly ISettingsService _settings;
+    private readonly ISnackbarService _snackbars;
     private readonly IUpdateService _updates;
 
     private string? _boundHotkeySignature;
@@ -57,6 +58,7 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
         IDictationCoordinator dictation,
         IGlobalHotkeySource hotkeys,
         ISettingsService settings,
+        ISnackbarService snackbars,
         IUpdateService updates)
     {
         _navigation = navigation;
@@ -64,9 +66,11 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
         _dictation = dictation;
         _hotkeys = hotkeys;
         _settings = settings;
+        _snackbars = snackbars;
         _updates = updates;
 
         _dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(RefreshDictationStatus);
+        _dictation.RecordingLimitReached += (_, args) => Dispatcher.UIThread.Post(() => ReportRecordingLimit(args.Limit));
         _hotkeys.Activated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyActivated);
         _hotkeys.Deactivated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyDeactivated);
         _hotkeys.BindingLost += (_, _) => Dispatcher.UIThread.Post(OnHotkeyBindingLost);
@@ -243,5 +247,14 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
             DictationState.Injecting => "Typing",
             _ => "Idle",
         };
+    }
+
+    // The notification area lives in the main window, which is hidden whenever the user dictates from
+    // the tray. The floating indicator carries the same news; this covers the window being open.
+    private void ReportRecordingLimit(TimeSpan limit)
+    {
+        var seconds = Math.Round(limit.TotalSeconds);
+
+        _snackbars.Show($"Recording stopped at its {seconds:0} second limit. What it captured was kept.", SnackbarKind.Error);
     }
 }

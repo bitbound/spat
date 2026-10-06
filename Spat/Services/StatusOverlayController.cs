@@ -38,8 +38,18 @@ public sealed class StatusOverlayController(
     /// </summary>
     private const double DecayPerFrame = 0.72;
 
+    /// <summary>
+    /// How long a notice that ended a take stays on the pill once the run is over. Long enough to read
+    /// once, short enough that the pill does not outstay its welcome.
+    /// </summary>
+    private static readonly TimeSpan NoticeVisible = TimeSpan.FromSeconds(4);
+
+    private const string WarningIconKey = "warning_regular";
+
     private StatusOverlayWindow? _window;
     private DispatcherTimer? _animation;
+    private DispatcherTimer? _noticeTimer;
+    private string? _notice;
     private bool _started;
 
     /// <summary>
@@ -60,29 +70,82 @@ public sealed class StatusOverlayController(
         _started = true;
 
         dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(Refresh);
+        dictation.RecordingLimitReached += (_, args) => Dispatcher.UIThread.Post(() => NoteLimit(args.Limit));
         levelMeter.LevelChanged += (_, level) => Interlocked.Exchange(ref _levelBits, BitConverter.SingleToInt32Bits(level));
+    }
+
+    private void NoteLimit(TimeSpan limit)
+    {
+        var seconds = Math.Round(limit.TotalSeconds);
+
+        _notice = $"Stopped at the {seconds:0} second limit";
     }
 
     private void Refresh()
     {
         // Only the states where something is actively happening are worth a floating indicator.
         // Typing is included so the pill does not flicker between post-processing and the result.
-        var (text, iconKey, isListening) = dictation.State switch
+        var active = dictation.State switch
         {
             DictationState.Listening => ("Listening", "mic_on_regular", true),
             DictationState.Transcribing => ("Transcribing", "arrow_sync_regular", false),
             DictationState.PostProcessing => ("Post-processing", "arrow_sync_regular", false),
             DictationState.Injecting => ("Typing", "text_regular", false),
-            _ => (null, string.Empty, false),
+            _ => ((string, string, bool)?)null,
         };
 
-        if (text is null)
+        if (active is not null)
         {
-            Hide();
+            // A new take is a new story, so a notice left over from the previous one is dropped.
+            if (dictation.State == DictationState.Listening)
+            {
+                ClearNotice();
+            }
+
+            var (text, iconKey, isListening) = active.Value;
+
+            Show(text, iconKey, isListening);
             return;
         }
 
-        Show(text, iconKey, isListening);
+        // A notice waits for the run to end so it is the last thing the pill says, instead of a flash
+        // between Transcribing and Typing.
+        if (_notice is not null)
+        {
+            Show(_notice, WarningIconKey, false);
+
+            _noticeTimer ??= CreateNoticeTimer();
+            _noticeTimer.Start();
+            return;
+        }
+
+        Hide();
+    }
+
+    private DispatcherTimer CreateNoticeTimer()
+    {
+        var timer = new DispatcherTimer { Interval = NoticeVisible };
+
+        timer.Tick += (_, _) =>
+        {
+            ClearNotice();
+            Hide();
+        };
+
+        return timer;
+    }
+
+    private void ClearNotice()
+    {
+        _notice = null;
+
+        if (_noticeTimer is null)
+        {
+            return;
+        }
+
+        _noticeTimer.Stop();
+        _noticeTimer = null;
     }
 
     private void Show(string text, string iconKey, bool isListening)

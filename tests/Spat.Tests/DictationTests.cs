@@ -82,6 +82,38 @@ public class DictationCoordinatorTests
     }
 
     [Fact]
+    public async Task StartAsync_WhenTheRecordingHitsTheLimit_ReportsTheTakeAsTruncated()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var reached = new TaskCompletionSource<DictationLimitReachedEventArgs>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _settings.Current.MaximumRecordingSeconds = 1;
+        _coordinator.RecordingLimitReached += (_, args) => reached.TrySetResult(args);
+
+        await _coordinator.StartAsync(ct);
+
+        var args = await reached.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+        await WaitUntilIdleAsync(ct);
+
+        Assert.Equal(TimeSpan.FromSeconds(1), args.Limit);
+        Assert.Equal(["hello there"], _injector.Typed);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenTheUserEndsTheTake_ReportsNoTruncation()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var truncated = false;
+
+        _coordinator.RecordingLimitReached += (_, _) => truncated = true;
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.False(truncated);
+    }
+
+    [Fact]
     public async Task StopAsync_WithPostProcessing_TypesModelOutputAndKeepsTheRawTranscription()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -404,6 +436,18 @@ public class DictationCoordinatorTests
 
         var prompt = Assert.Single(_textGeneration.Prompts);
         Assert.DoesNotContain("\"ControlR\"", prompt);
+    }
+
+    // The limit fires on a timer inside the run, so the take finishes a moment after the event.
+    private async Task WaitUntilIdleAsync(CancellationToken ct)
+    {
+        var started = DateTime.UtcNow;
+
+        while (_coordinator.State != DictationState.Idle)
+        {
+            Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10), "The dictation run never finished.");
+            await Task.Delay(25, ct);
+        }
     }
 
     private void AssertNoAudioFiles()
