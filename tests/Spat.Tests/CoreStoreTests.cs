@@ -245,6 +245,8 @@ public class PromptServiceTests
         Assert.Contains("release-candidate", instructions);
         Assert.Contains("quote blue mode end quote", instructions);
         Assert.Contains("\"blue mode\"", instructions);
+        Assert.Contains("visit github dot com", instructions);
+        Assert.Contains("visit github.com", instructions);
     }
 
     [Fact]

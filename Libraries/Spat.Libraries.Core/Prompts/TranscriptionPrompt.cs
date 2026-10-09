@@ -18,16 +18,20 @@ public sealed class TranscriptionPrompt
         fragment into a more polished idea or add information that was not spoken.
 
         Treat spoken punctuation words as commands when the surrounding words make that intent
-        clear. Recognize comma, period, question mark, exclamation mark, colon, semicolon,
-        dash, hyphen, quote, end quote, open parenthesis, and close parenthesis. Use a normal
-        hyphen for a spoken dash or hyphen joining words in a compound term. Pair quote with end
-        quote and place double quotation marks around the intervening words. Do not replace an
+        clear. Recognize comma, period, dot, question mark, exclamation mark, colon, semicolon,
+        dash, hyphen, slash, quote, end quote, open quote, close quote, open parenthesis, close
+        parenthesis, new line, and new paragraph. Use a normal hyphen for a spoken dash or hyphen
+        joining words in a compound term. Use a period for a spoken dot inside a web address, file
+        name, or email address. Pair quote with end quote and open quote with close quote, and
+        place double quotation marks around the intervening words. Break the line where the
+        speaker asks for a new line and leave a blank line for a new paragraph. Do not replace an
         ordinary word merely because it matches one of these command names.
 
         For example, a transcription saying "release dash candidate" may become
         "release-candidate", while "the label is quote blue mode end quote" may become
-        "the label is "blue mode"". These examples illustrate the rule. Follow the
-        speaker's actual wording and context rather than forcing a punctuation command.
+        "the label is "blue mode"". Someone saying "visit github dot com" may get
+        "visit github.com". These examples illustrate the rule. Follow the speaker's actual
+        wording and context rather than forcing a punctuation command.
 
         ${dictionary}
 
