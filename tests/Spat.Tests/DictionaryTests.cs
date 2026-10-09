@@ -81,6 +81,29 @@ public class CustomDictionaryServiceTests
     }
 
     [Fact]
+    public async Task SaveAllAsync_PreservesEntryOrder()
+    {
+        var fileStore = new InMemoryFileStore();
+        var dictionary = new CustomDictionaryService(new TestPlatformPaths(), fileStore);
+        var ct = TestContext.Current.CancellationToken;
+
+        await dictionary.SaveAllAsync(
+        [
+            new CustomDictionaryEntry { From = "top", To = "First" },
+            new CustomDictionaryEntry { From = "middle", To = "Second" },
+        ], ct);
+        await dictionary.SaveAllAsync(
+        [
+            new CustomDictionaryEntry { From = "middle", To = "Second" },
+            new CustomDictionaryEntry { From = "top", To = "First" },
+        ], ct);
+
+        var reloaded = new CustomDictionaryService(new TestPlatformPaths(), fileStore);
+
+        Assert.Equal(["middle", "top"], reloaded.GetAll().Select(entry => entry.From));
+    }
+
+    [Fact]
     public async Task DeleteAsync_RemovesOnlyTheSelectedEntry()
     {
         var dictionary = new CustomDictionaryService(new TestPlatformPaths(), new InMemoryFileStore());
@@ -208,9 +231,25 @@ public class PhraseReplacerTests
     }
 
     [Fact]
-    public void Replace_PrefersTheLongestEntryAtAPosition()
+    public void Replace_WhenPhrasesOverlap_TheEarlierEntryWins()
     {
         var result = Replace("control are", ("control", "CTRL"), ("control are", "ControlR"));
+
+        Assert.Equal("CTRL are", result);
+    }
+
+    [Fact]
+    public void Replace_WhenTheLongerPhraseComesFirst_TheWholePhraseMatches()
+    {
+        var result = Replace("control are", ("control are", "ControlR"), ("control", "CTRL"));
+
+        Assert.Equal("ControlR", result);
+    }
+
+    [Fact]
+    public void Replace_WhenTwoEntriesShareAPhrase_TheEarlierTermWins()
+    {
+        var result = Replace("control are", ("control are", "ControlR"), ("control are", "Control Runner"));
 
         Assert.Equal("ControlR", result);
     }

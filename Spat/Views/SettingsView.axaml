@@ -246,12 +246,12 @@
             <TextBlock Classes="h2" Text="Custom dictionary" />
             <TextBlock Classes="caption"
                        TextWrapping="Wrap"
-                       Text="When the transcription contains one of these phrases, the term is typed instead. Whole words and phrases only, case-insensitive. Example: &quot;get hub&quot; becomes &quot;GitHub&quot;." />
+                       Text="When the transcription contains one of these phrases, the term is typed instead. Whole words and phrases only, case-insensitive. Example: &quot;get hub&quot; becomes &quot;GitHub&quot;. Entries are applied top to bottom, and the topmost one that matches wins." />
 
             <ItemsControl ItemsSource="{Binding DictionaryEntries}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="cd:CustomDictionaryEntry">
-                  <Grid ColumnDefinitions="*,Auto,*,Auto,Auto" ColumnSpacing="6" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="*,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,0,0,6">
                     <TextBox Text="{Binding From}"
                              PlaceholderText="what you hear, e.g. get hub" />
                     <TextBlock Grid.Column="1"
@@ -265,6 +265,18 @@
                               VerticalAlignment="Center"
                               ToolTip.Tip="Off keeps the entry without applying it" />
                     <Button Grid.Column="4"
+                            Content="&#x2191;"
+                            Classes="Default VariantText Small"
+                            ToolTip.Tip="Move up, ahead of entries whose phrases overlap this one"
+                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveDictionaryEntryUpCommand}"
+                            CommandParameter="{Binding}" />
+                    <Button Grid.Column="5"
+                            Content="&#x2193;"
+                            Classes="Default VariantText Small"
+                            ToolTip.Tip="Move down, behind entries whose phrases overlap this one"
+                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveDictionaryEntryDownCommand}"
+                            CommandParameter="{Binding}" />
+                    <Button Grid.Column="6"
                             Content="Remove"
                             Classes="Error VariantText Small"
                             Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveDictionaryEntryCommand}"

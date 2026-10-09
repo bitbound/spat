@@ -30,7 +30,7 @@ public interface ICustomDictionaryService
     string? BuildCorrectionBlock();
 
     /// <summary>
-    /// Applies every enabled entry to the transcription.
+    /// Applies enabled entries to the transcription, earlier entries taking priority.
     /// </summary>
     string Replace(string text);
 }

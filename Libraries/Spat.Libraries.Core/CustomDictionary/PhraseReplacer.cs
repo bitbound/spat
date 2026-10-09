@@ -4,7 +4,8 @@ namespace Spat.Libraries.Core.CustomDictionary;
 
 /// <summary>
 /// Applies spoken-phrase substitutions to a transcription. Matching is case-insensitive and ordinal,
-/// and a phrase only fires on whole-word boundaries so "are" never fires inside "area".
+/// and a phrase only fires on whole-word boundaries so "are" never fires inside "area". Entries are
+/// tried in list order and the first one that matches at a position wins, so list position is priority.
 /// </summary>
 public static class PhraseReplacer
 {
@@ -19,13 +20,9 @@ public static class PhraseReplacer
             return text;
         }
 
-        // Longest first so "control are" wins over "are" at the same position. The length tiebreak
-        // on text keeps the order stable when two phrases are equally long.
         var patterns = entries
             .Where(entry => entry.Enabled && !string.IsNullOrWhiteSpace(entry.From) && !string.IsNullOrWhiteSpace(entry.To))
             .Select(entry => (From: entry.From.Trim(), To: entry.To.Trim()))
-            .OrderByDescending(pattern => pattern.From.Length)
-            .ThenBy(pattern => pattern.From, StringComparer.Ordinal)
             .ToList();
 
         if (patterns.Count == 0)

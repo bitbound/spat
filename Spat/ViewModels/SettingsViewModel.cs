@@ -436,6 +436,28 @@ public sealed partial class SettingsViewModel : ViewModelBase<SettingsView>
     }
 
     [RelayCommand]
+    private void MoveDictionaryEntryUp(CustomDictionaryEntry? entry)
+    {
+        var index = entry is null ? -1 : DictionaryEntries.IndexOf(entry);
+
+        if (index > 0)
+        {
+            DictionaryEntries.Move(index, index - 1);
+        }
+    }
+
+    [RelayCommand]
+    private void MoveDictionaryEntryDown(CustomDictionaryEntry? entry)
+    {
+        var index = entry is null ? -1 : DictionaryEntries.IndexOf(entry);
+
+        if (index >= 0 && index < DictionaryEntries.Count - 1)
+        {
+            DictionaryEntries.Move(index, index + 1);
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveAsync()
     {
         SaveError = null;
