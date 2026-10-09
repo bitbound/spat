@@ -447,7 +447,7 @@
                      MinHeight="140"
                      MaxHeight="360"
                      IsEnabled="{Binding !IsPromptReadOnly}"
-                     PlaceholderText="Instructions. Use ${stt_output} where the transcription should be inserted." />
+                     PlaceholderText="Instructions. Use ${stt_output} for the transcription and ${dictionary} for the custom dictionary block." />
           </StackPanel>
         </Border>
 

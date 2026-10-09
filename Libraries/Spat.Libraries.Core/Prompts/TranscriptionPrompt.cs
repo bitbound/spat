@@ -29,6 +29,8 @@ public sealed class TranscriptionPrompt
         "the label is "blue mode"". These examples illustrate the rule. Follow the
         speaker's actual wording and context rather than forcing a punctuation command.
 
+        ${dictionary}
+
         Transcription:
         ${stt_output}
         """;

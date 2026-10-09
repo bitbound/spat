@@ -261,7 +261,10 @@ public sealed class DictationCoordinator : IDictationCoordinator
                 var dictionaryBlock = _settings.Current.Dictionary.IncludeInPostProcessingEnabled
                     ? _dictionary.BuildCorrectionBlock()
                     : null;
-                var rendered = PromptRenderer.Render(prompt.Instructions, transcription, dictionaryBlock);
+
+                // The model cleans up the deterministic result rather than the raw transcription, so a
+                // dictionary term that PhraseReplacer already fixed survives post-processing.
+                var rendered = PromptRenderer.Render(prompt.Instructions, finalText, dictionaryBlock);
 
                 string? processed;
 

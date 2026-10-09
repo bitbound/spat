@@ -321,6 +321,35 @@ public class PromptRendererDictionaryTests
     }
 
     [Fact]
+    public void Render_WithOnlyTheOutputPlaceholder_PutsTheBlockAheadOfTheTranscription()
+    {
+        var rendered = PromptRenderer.Render("Fix: ${stt_output}", "raw", "- \"a\" -> \"B\"");
+
+        Assert.Equal("Fix: - \"a\" -> \"B\"\n\nraw", rendered);
+    }
+
+    [Fact]
+    public void Render_WithoutAPlaceholder_PutsTheBlockAheadOfTheTranscription()
+    {
+        var rendered = PromptRenderer.Render("Fix the grammar.", "raw", "- \"a\" -> \"B\"");
+
+        Assert.Equal("Fix the grammar.\n\n- \"a\" -> \"B\"\n\nTranscription:\nraw", rendered);
+    }
+
+    [Fact]
+    public void Render_WithTheBuiltInPrompt_PutsTheBlockAheadOfTheTranscription()
+    {
+        const string block = "- \"control are\" -> \"ControlR\"";
+
+        var rendered = PromptRenderer.Render(TranscriptionPrompt.BuiltInInstructions, "open control are settings", block);
+
+        Assert.Contains(block, rendered);
+        Assert.True(
+            rendered.IndexOf(block, StringComparison.Ordinal)
+            < rendered.IndexOf("open control are settings", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Render_WithNoBlock_LeavesThePromptAlone()
     {
         var rendered = PromptRenderer.Render("Fix: ${stt_output}", "raw", dictionaryBlock: null);

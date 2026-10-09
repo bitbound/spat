@@ -438,6 +438,25 @@ public class DictationCoordinatorTests
         Assert.DoesNotContain("\"ControlR\"", prompt);
     }
 
+    [Fact]
+    public async Task StopAsync_WithPostProcessingAndADictionaryEntry_FeedsTheReplacedText()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        await _dictionary.CreateAsync("control are", "ControlR", ct);
+        _speechToText.Text = "open control are settings";
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        var prompt = Assert.Single(_textGeneration.Prompts);
+        Assert.Contains("open ControlR settings", prompt);
+        Assert.DoesNotContain("open control are settings", prompt);
+    }
+
     // The limit fires on a timer inside the run, so the take finishes a moment after the event.
     private async Task WaitUntilIdleAsync(CancellationToken ct)
     {
