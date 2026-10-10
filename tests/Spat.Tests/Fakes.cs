@@ -6,6 +6,7 @@ using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Core.Speech;
 using Spat.Libraries.Core.Theming;
+using Spat.Libraries.Core.Updates;
 
 namespace Spat.Tests;
 
@@ -312,5 +313,41 @@ internal static class TestSettings
         {
             SpeechToText = new SpeechToTextSettings { Endpoint = "https://api.example.test/v1", ModelId = "whisper-1" },
         };
+    }
+}
+
+public sealed class FakeUpdateService : IUpdateService
+{
+    public UpdateInfo? AvailableUpdate { get; set; }
+
+    public UpdateCheckResult Result { get; set; } = UpdateCheckResult.UpToDate;
+
+    public Exception? Throw { get; set; }
+
+    public int CheckCount { get; private set; }
+
+    public event EventHandler<UpdateInfo>? UpdateAvailable;
+
+    public Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default)
+    {
+        CheckCount++;
+
+        if (Throw is not null)
+        {
+            throw Throw;
+        }
+
+        if (Result.Update is { } update)
+        {
+            AvailableUpdate = update;
+            UpdateAvailable?.Invoke(this, update);
+        }
+
+        return Task.FromResult(Result);
+    }
+
+    public Task ApplyAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
     }
 }

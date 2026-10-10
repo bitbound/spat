@@ -34,6 +34,10 @@ public partial class App : Application
         // creates its window the first time a dictation runs.
         StaticServiceProvider.Instance.GetRequiredService<IStatusOverlayController>().Start();
 
+        // Update checks keep running from the tray, so a long-running instance notices a release
+        // published after launch.
+        StaticServiceProvider.Instance.GetRequiredService<IUpdatePollingService>().Start();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Dictation keeps running from the tray while the window is hidden, so closing every

@@ -76,6 +76,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IUpdateService, GitHubReleaseUpdateService>();
         services.AddSingleton<UpdateHandoffRunner>();
+        services.AddSingleton<IUpdatePollingService, UpdatePollingService>();
 
         services.AddSingleton<IDictationCoordinator, DictationCoordinator>();
         services.AddSingleton<IStatusOverlayController, StatusOverlayController>();
