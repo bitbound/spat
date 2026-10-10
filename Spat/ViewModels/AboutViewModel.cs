@@ -14,6 +14,7 @@ public enum UpdateIndicatorState
     Checking,
     UpToDate,
     UpdateAvailable,
+    Applying,
     Failed,
 }
 
@@ -29,9 +30,12 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
     [NotifyPropertyChangedFor(nameof(IsCheckingForUpdates))]
     [NotifyPropertyChangedFor(nameof(IsUpToDate))]
     [NotifyPropertyChangedFor(nameof(IsUpdateAvailable))]
+    [NotifyPropertyChangedFor(nameof(IsApplying))]
+    [NotifyPropertyChangedFor(nameof(IsBusy))]
     [NotifyPropertyChangedFor(nameof(HasUpdateCheckFailed))]
     [NotifyPropertyChangedFor(nameof(UpdateStatusText))]
     [NotifyPropertyChangedFor(nameof(UpdateStatusIconKey))]
+    [NotifyPropertyChangedFor(nameof(UpdateStatusTooltip))]
     private UpdateIndicatorState _updateState = UpdateIndicatorState.NotChecked;
 
     [ObservableProperty]
@@ -52,6 +56,10 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
 
     public bool IsUpdateAvailable => UpdateState == UpdateIndicatorState.UpdateAvailable;
 
+    public bool IsApplying => UpdateState == UpdateIndicatorState.Applying;
+
+    public bool IsBusy => UpdateState is UpdateIndicatorState.Checking or UpdateIndicatorState.Applying;
+
     public bool HasUpdateCheckFailed => UpdateState == UpdateIndicatorState.Failed;
 
     public string UpdateStatusText => UpdateState switch
@@ -61,6 +69,7 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
         UpdateIndicatorState.UpdateAvailable when AvailableVersion is { Length: > 0 } version =>
             $"Update available ({version})",
         UpdateIndicatorState.UpdateAvailable => "Update available",
+        UpdateIndicatorState.Applying => "Downloading the update...",
         UpdateIndicatorState.Failed => "Couldn't check. Click to retry",
         _ => "Check for updates",
     };
@@ -68,9 +77,17 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
     public string UpdateStatusIconKey => UpdateState switch
     {
         UpdateIndicatorState.UpToDate => "checkmark_circle_regular",
-        UpdateIndicatorState.UpdateAvailable => "arrow_download_regular",
+        UpdateIndicatorState.UpdateAvailable or UpdateIndicatorState.Applying => "arrow_download_regular",
         UpdateIndicatorState.Failed => "warning_regular",
         _ => "arrow_sync_regular",
+    };
+
+    public string UpdateStatusTooltip => UpdateState switch
+    {
+        UpdateIndicatorState.UpdateAvailable => "Download this update and restart Spat",
+        UpdateIndicatorState.Applying => "Downloading the update",
+        UpdateIndicatorState.Checking => "Checking GitHub Releases",
+        _ => "Check GitHub Releases for a newer version",
     };
 
     public string RepositoryUrl => _appInfo.RepositoryUrl;
@@ -114,7 +131,20 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
         return Task.CompletedTask;
     }
 
+    // The button does double duty. When a release is already known it installs it, matching the
+    // Update link in the status bar. Otherwise it checks again.
     [RelayCommand]
+    private async Task CheckOrApplyUpdateAsync()
+    {
+        if (UpdateState == UpdateIndicatorState.UpdateAvailable)
+        {
+            await ApplyUpdateAsync();
+            return;
+        }
+
+        await CheckForUpdatesAsync();
+    }
+
     private async Task CheckForUpdatesAsync()
     {
         UpdateState = UpdateIndicatorState.Checking;
@@ -139,6 +169,23 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Update check failed: {ex}");
+            UpdateState = UpdateIndicatorState.Failed;
+        }
+    }
+
+    private async Task ApplyUpdateAsync()
+    {
+        UpdateState = UpdateIndicatorState.Applying;
+
+        try
+        {
+            // Hands off to the downloaded build, which replaces this executable and relaunches it, so
+            // this process does not survive a successful call.
+            await _updates.ApplyAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Applying the update failed: {ex}");
             UpdateState = UpdateIndicatorState.Failed;
         }
     }

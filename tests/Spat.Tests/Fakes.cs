@@ -326,6 +326,10 @@ public sealed class FakeUpdateService : IUpdateService
 
     public int CheckCount { get; private set; }
 
+    public int ApplyCount { get; private set; }
+
+    public Exception? ThrowOnApply { get; set; }
+
     public event EventHandler<UpdateInfo>? UpdateAvailable;
 
     public Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default)
@@ -348,6 +352,13 @@ public sealed class FakeUpdateService : IUpdateService
 
     public Task ApplyAsync(CancellationToken cancellationToken = default)
     {
+        ApplyCount++;
+
+        if (ThrowOnApply is not null)
+        {
+            throw ThrowOnApply;
+        }
+
         return Task.CompletedTask;
     }
 }

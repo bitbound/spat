@@ -19,6 +19,9 @@
     <Style Selector="PathIcon.upToDate">
       <Setter Property="Foreground" Value="{DynamicResource SuccessColor}" />
     </Style>
+    <Style Selector="PathIcon.applying">
+      <Setter Property="Foreground" Value="{DynamicResource PrimaryColor}" />
+    </Style>
     <Style Selector="PathIcon.failed">
       <Setter Property="Foreground" Value="{DynamicResource WarningColor}" />
     </Style>
@@ -27,6 +30,9 @@
     </Style>
     <Style Selector="TextBlock.upToDate">
       <Setter Property="Foreground" Value="{DynamicResource SuccessColor}" />
+    </Style>
+    <Style Selector="TextBlock.applying">
+      <Setter Property="Foreground" Value="{DynamicResource PrimaryColor}" />
     </Style>
     <Style Selector="TextBlock.failed">
       <Setter Property="Foreground" Value="{DynamicResource WarningColor}" />
@@ -48,18 +54,20 @@
                       VerticalAlignment="Center">
             <TextBlock Text="{Binding AppVersion}" VerticalAlignment="Center" />
             <Button Classes="Primary VariantText Small"
-                    Command="{Binding CheckForUpdatesCommand}"
-                    IsEnabled="{Binding !IsCheckingForUpdates}"
+                    Command="{Binding CheckOrApplyUpdateCommand}"
+                    IsEnabled="{Binding !IsBusy}"
                     VerticalAlignment="Center"
-                    ToolTip.Tip="Check GitHub Releases for a newer version">
+                    ToolTip.Tip="{Binding UpdateStatusTooltip}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <PathIcon Data="{Binding UpdateStatusIconKey, Converter={StaticResource ResourceKeyToGeometryConverter}}"
                           Classes.checking="{Binding IsCheckingForUpdates}"
                           Classes.upToDate="{Binding IsUpToDate}"
+                          Classes.applying="{Binding IsApplying}"
                           Classes.failed="{Binding HasUpdateCheckFailed}" />
                 <TextBlock Text="{Binding UpdateStatusText}"
                            Classes.checking="{Binding IsCheckingForUpdates}"
                            Classes.upToDate="{Binding IsUpToDate}"
+                           Classes.applying="{Binding IsApplying}"
                            Classes.failed="{Binding HasUpdateCheckFailed}"
                            VerticalAlignment="Center" />
               </StackPanel>
