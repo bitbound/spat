@@ -22,7 +22,7 @@ public sealed class GitHubReleaseUpdateService(
 
     public event EventHandler<UpdateInfo>? UpdateAvailable;
 
-    public async Task<UpdateInfo?> CheckAsync(CancellationToken cancellationToken = default)
+    public async Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default)
     {
         GitHubRelease? release;
 
@@ -33,12 +33,13 @@ public sealed class GitHubReleaseUpdateService(
         catch (Exception exception) when (exception is HttpRequestException or JsonException)
         {
             logger.LogWarning(exception, "Could not check for a Spat update.");
-            return null;
+            return UpdateCheckResult.Failed;
         }
 
         if (release is null)
         {
-            return null;
+            logger.LogWarning("The latest release response was empty.");
+            return UpdateCheckResult.Failed;
         }
 
         var tag = release.TagName;
@@ -46,7 +47,7 @@ public sealed class GitHubReleaseUpdateService(
         if (!UpdateVersionParser.TryParse(tag, out var releaseVersion))
         {
             logger.LogWarning("Ignoring release with unrecognized version tag \"{Tag}\".", tag);
-            return null;
+            return UpdateCheckResult.UpToDate;
         }
 
         var currentVersion = UpdateVersionParser.NormalizeCurrent(appInfo.Version);
@@ -54,7 +55,7 @@ public sealed class GitHubReleaseUpdateService(
         if (releaseVersion <= currentVersion)
         {
             logger.LogDebug("Spat {Version} is already the latest release.", currentVersion);
-            return null;
+            return UpdateCheckResult.UpToDate;
         }
 
         var asset = ReleaseAssetSelector.Select(release);
@@ -66,7 +67,7 @@ public sealed class GitHubReleaseUpdateService(
                 "Release {Tag} has no {AssetName} asset, so this update cannot be applied.",
                 tag,
                 ReleaseAssetSelector.AssetName);
-            return null;
+            return UpdateCheckResult.UpToDate;
         }
 
         ArgumentNullException.ThrowIfNull(tag);
@@ -82,12 +83,12 @@ public sealed class GitHubReleaseUpdateService(
 
         logger.LogInformation("Update available: Spat {Tag}.", update.Version);
 
-        return update;
+        return UpdateCheckResult.Available(update);
     }
 
     public async Task ApplyAsync(CancellationToken cancellationToken = default)
     {
-        var update = _availableUpdate ?? await CheckAsync(cancellationToken);
+        var update = _availableUpdate ?? (await CheckAsync(cancellationToken)).Update;
 
         if (update is null)
         {

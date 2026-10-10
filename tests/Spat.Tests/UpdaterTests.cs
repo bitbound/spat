@@ -20,12 +20,13 @@ public class GitHubReleaseUpdateServiceTests
         service.UpdateAvailable += (_, _) => raised++;
         var ct = TestContext.Current.CancellationToken;
 
-        var update = await service.CheckAsync(ct);
+        var result = await service.CheckAsync(ct);
 
-        Assert.Equal($"https://downloads.example.test/{ExpectedAssetName}", update?.DownloadUrl);
-        Assert.Equal(ExpectedAssetName, update?.AssetName);
-        Assert.Equal("v1.5.0", update?.Version);
-        Assert.Equal(update, service.AvailableUpdate);
+        Assert.Equal(UpdateCheckStatus.UpdateAvailable, result.Status);
+        Assert.Equal($"https://downloads.example.test/{ExpectedAssetName}", result.Update?.DownloadUrl);
+        Assert.Equal(ExpectedAssetName, result.Update?.AssetName);
+        Assert.Equal("v1.5.0", result.Update?.Version);
+        Assert.Equal(result.Update, service.AvailableUpdate);
 
         await service.CheckAsync(ct);
 
@@ -36,13 +37,14 @@ public class GitHubReleaseUpdateServiceTests
     [Theory]
     [InlineData("v0.9.9")]
     [InlineData("v1.0.0")]
-    public async Task CheckAsync_WhenReleaseIsNotNewer_ReturnsNull(string tag)
+    public async Task CheckAsync_WhenReleaseIsNotNewer_ReportsUpToDate(string tag)
     {
         var (service, _) = Create(Release(tag, withAsset: true));
 
-        var update = await service.CheckAsync(TestContext.Current.CancellationToken);
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
 
-        Assert.Null(update);
+        Assert.Equal(UpdateCheckStatus.UpToDate, result.Status);
+        Assert.Null(result.Update);
         Assert.Null(service.AvailableUpdate);
     }
 
@@ -54,51 +56,61 @@ public class GitHubReleaseUpdateServiceTests
             Release("v2026.9.26.1954", withAsset: true),
             currentVersion: new Version(2026, 9, 26, 1900));
 
-        var update = await service.CheckAsync(TestContext.Current.CancellationToken);
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal("v2026.9.26.1954", update?.Version);
+        Assert.Equal("v2026.9.26.1954", result.Update?.Version);
     }
 
     [Fact]
-    public async Task CheckAsync_WhenSameDayReleaseHasAZeroPaddedEarlierRevision_ReturnsNull()
+    public async Task CheckAsync_WhenSameDayReleaseHasAZeroPaddedEarlierRevision_ReportsUpToDate()
     {
         var (service, _) = Create(
             Release("v2026.9.26.0244", withAsset: true),
             currentVersion: new Version(2026, 9, 26, 1900));
 
-        Assert.Null(await service.CheckAsync(TestContext.Current.CancellationToken));
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(UpdateCheckStatus.UpToDate, result.Status);
     }
 
     [Fact]
-    public async Task CheckAsync_WhenTagIsNotAVersion_ReturnsNull()
+    public async Task CheckAsync_WhenTagIsNotAVersion_ReportsUpToDate()
     {
         var (service, _) = Create(Release("nightly-build", withAsset: true));
 
-        Assert.Null(await service.CheckAsync(TestContext.Current.CancellationToken));
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(UpdateCheckStatus.UpToDate, result.Status);
     }
 
     [Fact]
-    public async Task CheckAsync_WhenReleaseHasNoUsableAsset_ReturnsNull()
+    public async Task CheckAsync_WhenReleaseHasNoUsableAsset_ReportsUpToDate()
     {
         var (service, _) = Create(Release("v2.0.0", withAsset: false));
 
-        Assert.Null(await service.CheckAsync(TestContext.Current.CancellationToken));
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(UpdateCheckStatus.UpToDate, result.Status);
     }
 
     [Fact]
-    public async Task CheckAsync_WhenGitHubReturnsAnError_ReturnsNull()
+    public async Task CheckAsync_WhenGitHubReturnsAnError_ReportsFailure()
     {
         var (service, _) = Create(_ => StubHttpMessageHandler.Json("""{"message":"server error"}""", HttpStatusCode.InternalServerError));
 
-        Assert.Null(await service.CheckAsync(TestContext.Current.CancellationToken));
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(UpdateCheckStatus.Failed, result.Status);
     }
 
     [Fact]
-    public async Task CheckAsync_WhenGitHubIsUnreachable_ReturnsNull()
+    public async Task CheckAsync_WhenGitHubIsUnreachable_ReportsFailure()
     {
         var (service, _) = Create(_ => throw new HttpRequestException("no route to host"));
 
-        Assert.Null(await service.CheckAsync(TestContext.Current.CancellationToken));
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(UpdateCheckStatus.Failed, result.Status);
     }
 
     [Fact]
@@ -106,10 +118,10 @@ public class GitHubReleaseUpdateServiceTests
     {
         var (service, _) = Create(ReleaseWithAssets("v1.5.0", "spat"));
 
-        var update = await service.CheckAsync(TestContext.Current.CancellationToken);
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal("spat", update?.AssetName);
-        Assert.Equal("https://downloads.example.test/spat", update?.DownloadUrl);
+        Assert.Equal("spat", result.Update?.AssetName);
+        Assert.Equal("https://downloads.example.test/spat", result.Update?.DownloadUrl);
     }
 
     [Fact]
@@ -117,9 +129,9 @@ public class GitHubReleaseUpdateServiceTests
     {
         var (service, _) = Create(ReleaseWithAssets("v1.5.0", "spat", ExpectedAssetName));
 
-        var update = await service.CheckAsync(TestContext.Current.CancellationToken);
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(ExpectedAssetName, update?.AssetName);
+        Assert.Equal(ExpectedAssetName, result.Update?.AssetName);
     }
 
     [Fact]
@@ -130,9 +142,9 @@ public class GitHubReleaseUpdateServiceTests
         var legacySpelling = char.ToUpperInvariant(ExpectedAssetName[0]) + ExpectedAssetName[1..];
         var (service, _) = Create(ReleaseWithAssets("v1.5.0", legacySpelling));
 
-        var update = await service.CheckAsync(TestContext.Current.CancellationToken);
+        var result = await service.CheckAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(legacySpelling, update?.AssetName);
+        Assert.Equal(legacySpelling, result.Update?.AssetName);
     }
 
     private static (GitHubReleaseUpdateService Service, StubHttpMessageHandler Handler) Create(

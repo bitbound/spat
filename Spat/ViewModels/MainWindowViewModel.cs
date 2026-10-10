@@ -184,9 +184,9 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
 
         try
         {
-            var update = await _updates.CheckAsync();
+            var result = await _updates.CheckAsync();
 
-            if (update is not null)
+            if (result.Update is { } update)
             {
                 ShowUpdate(update);
             }
