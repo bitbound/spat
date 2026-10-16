@@ -87,11 +87,15 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IMainWindowViewModel, MainWindowViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<DictionaryViewModel>();
+        services.AddSingleton<PostProcessingViewModel>();
         services.AddSingleton<HistoryViewModel>();
         services.AddSingleton<AboutViewModel>();
 
         services.AddTransient<MainWindow>();
         services.AddTransient<SettingsView>();
+        services.AddTransient<DictionaryView>();
+        services.AddTransient<PostProcessingView>();
         services.AddTransient<HistoryView>();
         services.AddTransient<AboutView>();
 

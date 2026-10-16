@@ -76,7 +76,9 @@ Also under **Settings → Dictation**.
 
 ### Optional post-processing
 
-**Settings → Post-processing** sends the raw transcript through a chat model before typing it. This helps with punctuation, capitalization, and filler words. It takes its own endpoint, key, and model, so you can run a small local model for cleanup and keep the speech endpoint somewhere else.
+**Post-processing** sends the raw transcript through a chat model before typing it. This helps with punctuation, capitalization, and filler words. It takes its own endpoint, key, and model, so you can run a small local model for cleanup and keep the speech endpoint somewhere else.
+
+Each settings page has its own **Save** button, so a page saves only the fields it owns.
 
 ### Start on login
 
