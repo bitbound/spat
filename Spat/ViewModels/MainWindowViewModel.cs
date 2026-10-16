@@ -85,8 +85,8 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
         await base.OnInitializeAsync();
 
         NavigationItems.Add(new NavItemViewModel("settings_regular", "Settings", _navigation, typeof(SettingsViewModel)));
-        NavigationItems.Add(new NavItemViewModel("dictionary_regular", "Dictionary", _navigation, typeof(DictionaryViewModel)));
-        NavigationItems.Add(new NavItemViewModel("post_processing_regular", "Post-processing", _navigation, typeof(PostProcessingViewModel)));
+        NavigationItems.Add(new NavItemViewModel("book_regular", "Dictionary", _navigation, typeof(DictionaryViewModel)));
+        NavigationItems.Add(new NavItemViewModel("magic_wand_regular", "Post-processing", _navigation, typeof(PostProcessingViewModel)));
         NavigationItems.Add(new NavItemViewModel("history_regular", "History", _navigation, typeof(HistoryViewModel)));
         NavigationItems.Add(new NavItemViewModel("info_regular", "About", _navigation, typeof(AboutViewModel)));
 
