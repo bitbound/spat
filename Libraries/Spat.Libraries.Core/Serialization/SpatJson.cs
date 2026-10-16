@@ -5,6 +5,7 @@ using Spat.Libraries.Core.CustomDictionary;
 using Spat.Libraries.Core.History;
 using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
+using Spat.Libraries.Core.SpeechCommands;
 
 namespace Spat.Libraries.Core.Serialization;
 
@@ -23,6 +24,8 @@ public static class SpatJson
     public static JsonTypeInfo<List<TranscriptionPrompt>> PromptsInfo { get; } = (JsonTypeInfo<List<TranscriptionPrompt>>)Options.GetTypeInfo(typeof(List<TranscriptionPrompt>));
 
     public static JsonTypeInfo<List<CustomDictionaryEntry>> DictionaryInfo { get; } = (JsonTypeInfo<List<CustomDictionaryEntry>>)Options.GetTypeInfo(typeof(List<CustomDictionaryEntry>));
+
+    public static JsonTypeInfo<List<SpeechCommand>> SpeechCommandsInfo { get; } = (JsonTypeInfo<List<SpeechCommand>>)Options.GetTypeInfo(typeof(List<SpeechCommand>));
 
     public static JsonTypeInfo<List<HistoryEntry>> HistoryInfo { get; } = (JsonTypeInfo<List<HistoryEntry>>)Options.GetTypeInfo(typeof(List<HistoryEntry>));
 
@@ -47,5 +50,6 @@ public static class SpatJson
 [JsonSerializable(typeof(AppSettings))]
 [JsonSerializable(typeof(List<TranscriptionPrompt>))]
 [JsonSerializable(typeof(List<CustomDictionaryEntry>))]
+[JsonSerializable(typeof(List<SpeechCommand>))]
 [JsonSerializable(typeof(List<HistoryEntry>))]
 public sealed partial class SpatSerializerContext : JsonSerializerContext;

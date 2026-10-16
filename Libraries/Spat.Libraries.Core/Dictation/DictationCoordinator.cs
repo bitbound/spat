@@ -6,6 +6,7 @@ using Spat.Libraries.Core.Input;
 using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Core.Speech;
+using Spat.Libraries.Core.SpeechCommands;
 
 namespace Spat.Libraries.Core.Dictation;
 
@@ -25,6 +26,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
     private readonly ISettingsService _settings;
     private readonly IPromptService _prompts;
     private readonly ICustomDictionaryService _dictionary;
+    private readonly ISpeechCommandService _speechCommands;
     private readonly IHistoryService _history;
     private readonly ISpeechToTextClient _speechToText;
     private readonly ITextGenerationClient _textGeneration;
@@ -39,6 +41,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
         ITextGenerationClient textGeneration,
         IPromptService prompts,
         ICustomDictionaryService dictionary,
+        ISpeechCommandService speechCommands,
         IHistoryService history,
         ITextInputInjector injector,
         ISettingsService settings,
@@ -51,6 +54,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
         _textGeneration = textGeneration;
         _prompts = prompts;
         _dictionary = dictionary;
+        _speechCommands = speechCommands;
         _history = history;
         _injector = injector;
         _settings = settings;
@@ -262,9 +266,11 @@ public sealed class DictationCoordinator : IDictationCoordinator
                     ? _dictionary.BuildCorrectionBlock()
                     : null;
 
+                var speechCommandsBlock = _speechCommands.BuildInstructionBlock();
+
                 // The model cleans up the deterministic result rather than the raw transcription, so a
                 // dictionary term that PhraseReplacer already fixed survives post-processing.
-                var rendered = PromptRenderer.Render(prompt.Instructions, finalText, dictionaryBlock);
+                var rendered = PromptRenderer.Render(prompt.Instructions, finalText, dictionaryBlock, speechCommandsBlock);
 
                 string? processed;
 

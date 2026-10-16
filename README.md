@@ -16,6 +16,7 @@ Spat is a small desktop utility for Windows. It records the microphone, sends th
 - Transcription through any endpoint that speaks the OpenAI `/v1/audio/transcriptions` API.
 - An optional second pass through a text model to clean up the transcript before it gets typed.
 - A custom dictionary that swaps misheard phrases before typing, so "control are" becomes "ControlR".
+- Spoken commands that wrap words and reformat them, so saying "pascal" and then "end pascal" around a phrase writes it in PascalCase.
 - Text is injected with `SendInput`, so it lands in the focused application like typed keystrokes.
 - A history of past dictations with optional recording playback.
 - Ships as one self-contained single-file exe that updates itself in place from GitHub Releases.
@@ -78,6 +79,8 @@ Also under **Settings → Dictation**.
 
 **Post-processing** sends the raw transcript through a chat model before typing it. This helps with punctuation, capitalization, and filler words. It takes its own endpoint, key, and model, so you can run a small local model for cleanup and keep the speech endpoint somewhere else.
 
+The **Spoken commands** card on the same page switches the shipped commands (Quote, Pascal, Camel, Snake, Kebab) on and off and lets you add your own. A command wraps a stretch of speech between its start phrase and its end phrase, applies its instructions to those words, and leaves both phrases out of the result. Saying "quote" and then "end quote" around some words puts quotation marks around them, while saying "pascal" and then "end pascal" removes the spaces and capitalizes each word. The text model does the work, so the commands only apply while post-processing runs. A command you add needs a start phrase, at least one end phrase, and its instructions, or it is dropped when the page is saved.
+
 Each settings page has its own **Save** button, so a page saves only the fields it owns.
 
 ### Start on login
@@ -92,6 +95,7 @@ under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 | `%APPDATA%\spat\settings.json` | Settings |
 | `%APPDATA%\spat\prompts.json` | Post-processing prompts |
 | `%APPDATA%\spat\dictionary.json` | Custom dictionary entries |
+| `%APPDATA%\spat\speech-commands.json` | Spoken commands |
 | `%APPDATA%\spat\logs\spat.log` | Log file |
 | `%LOCALAPPDATA%\spat\history.json` | Dictation history |
 | `%LOCALAPPDATA%\spat\audio\` | Saved recordings |

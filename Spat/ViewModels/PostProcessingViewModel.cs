@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Core.Speech;
+using Spat.Libraries.Core.SpeechCommands;
 using Spat.Views;
 
 namespace Spat.ViewModels;
@@ -10,6 +11,7 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
 {
     private readonly ISettingsService _settings;
     private readonly IPromptService _prompts;
+    private readonly ISpeechCommandService _speechCommands;
     private readonly ITextGenerationClient _textGeneration;
 
   [ObservableProperty]
@@ -90,10 +92,21 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
   [ObservableProperty]
   public partial bool IsPromptReadOnly { get; set; }
 
-  public PostProcessingViewModel(ISettingsService settings, IPromptService prompts, ITextGenerationClient textGeneration)
+  [ObservableProperty]
+  public partial ObservableCollection<SpeechCommand> BuiltInCommands { get; set; } = [];
+
+  [ObservableProperty]
+  public partial ObservableCollection<SpeechCommand> CustomCommands { get; set; } = [];
+
+  public PostProcessingViewModel(
+      ISettingsService settings,
+      IPromptService prompts,
+      ISpeechCommandService speechCommands,
+      ITextGenerationClient textGeneration)
     {
         _settings = settings;
         _prompts = prompts;
+        _speechCommands = speechCommands;
         _textGeneration = textGeneration;
     }
 
@@ -108,6 +121,7 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
     {
         LoadFromSettings();
         RefreshPrompts();
+        RefreshSpeechCommands();
 
         return Task.CompletedTask;
     }
@@ -189,6 +203,22 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
     }
 
     [RelayCommand]
+    private void Add()
+    {
+        CustomCommands.Add(new SpeechCommand());
+    }
+
+    // A blank or half-filled row is dropped at save, so adding one costs nothing.
+    [RelayCommand]
+    private void Remove(SpeechCommand? command)
+    {
+        if (command is not null)
+        {
+            CustomCommands.Remove(command);
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveAsync()
     {
         SaveError = null;
@@ -222,6 +252,14 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
             // The dropdown shows the cached title, so it needs rebuilding after a rename.
             RefreshPrompts();
         }
+
+        var speechCommands = _settings.Current.SpeechCommands;
+        speechCommands.DisabledBuiltInIds = [.. BuiltInCommands.Where(command => !command.Enabled).Select(command => command.Id)];
+
+        await _speechCommands.SaveAllAsync(CustomCommands);
+
+        // Incomplete commands are dropped at write, so the page has to show what actually survived.
+        RefreshSpeechCommands();
 
         await _settings.SaveAsync();
 
@@ -270,6 +308,12 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
 
         SelectedPrompt = PromptOptions.FirstOrDefault(option => option.Prompt.Id == selectedId)
             ?? PromptOptions.FirstOrDefault();
+    }
+
+    private void RefreshSpeechCommands()
+    {
+        BuiltInCommands = new ObservableCollection<SpeechCommand>(_speechCommands.GetBuiltIns());
+        CustomCommands = new ObservableCollection<SpeechCommand>(_speechCommands.GetCustom());
     }
 
     private bool TryReadGenerationOptions(out TextGenerationOptions options, out string? error)

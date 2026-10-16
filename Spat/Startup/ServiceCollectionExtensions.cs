@@ -8,6 +8,7 @@ using Spat.Libraries.Core.Platform;
 using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Core.Speech;
+using Spat.Libraries.Core.SpeechCommands;
 using Spat.Libraries.Core.Theming;
 using Spat.Libraries.Core.Updates;
 using Spat.Libraries.Native.Windows;
@@ -54,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IPromptService, PromptService>();
         services.AddSingleton<ICustomDictionaryService, CustomDictionaryService>();
+        services.AddSingleton<ISpeechCommandService, SpeechCommandService>();
         services.AddSingleton<IRecordingStore, RecordingStore>();
         services.AddSingleton<IHistoryService, HistoryService>();
 

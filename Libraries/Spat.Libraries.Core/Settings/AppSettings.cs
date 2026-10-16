@@ -80,6 +80,21 @@ public sealed class AppSettings
     public PostProcessingSettings PostProcessing { get; set; } = new();
 
     public CustomDictionarySettings Dictionary { get; set; } = new();
+
+    public SpeechCommandsSettings SpeechCommands { get; set; } = new();
+}
+
+/// <summary>
+/// Where the spoken commands reach beyond their shipped defaults. The user's own commands live in
+/// speech-commands.json rather than in settings.
+/// </summary>
+public sealed class SpeechCommandsSettings
+{
+    /// <summary>
+    /// The shipped commands the user switched off. Anything absent from the list stays on, so a newly
+    /// shipped command arrives switched on.
+    /// </summary>
+    public List<Guid> DisabledBuiltInIds { get; set; } = [];
 }
 
 /// <summary>

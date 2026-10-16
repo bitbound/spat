@@ -6,6 +6,7 @@ using Spat.Libraries.Core.History;
 using Spat.Libraries.Core.Prompts;
 using Spat.Libraries.Core.Settings;
 using Spat.Libraries.Core.Speech;
+using Spat.Libraries.Core.SpeechCommands;
 
 namespace Spat.Tests;
 
@@ -18,6 +19,7 @@ public class DictationCoordinatorTests
     private readonly FakeTextGenerationClient _textGeneration = new();
     private readonly FakeTextInputInjector _injector = new();
     private readonly CustomDictionaryService _dictionary;
+    private readonly SpeechCommandService _speechCommands;
     private readonly SettingsService _settings;
     private readonly HistoryService _history;
     private readonly DictationCoordinator _coordinator;
@@ -27,6 +29,7 @@ public class DictationCoordinatorTests
         _settings = TestSettings.Create(_fileStore, TestSettings.ConfiguredSst());
         _recordings = new RecordingStore(new TestPlatformPaths(), _fileStore);
         _dictionary = new CustomDictionaryService(new TestPlatformPaths(), _fileStore);
+        _speechCommands = new SpeechCommandService(new TestPlatformPaths(), _fileStore, _settings);
         _history = new HistoryService(new TestPlatformPaths(), _fileStore, _recordings, _settings);
         _coordinator = Create(settings: _settings);
     }
@@ -439,6 +442,39 @@ public class DictationCoordinatorTests
     }
 
     [Fact]
+    public async Task StopAsync_WithPostProcessing_FeedsTheSpokenCommandsToThePrompt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        var prompt = Assert.Single(_textGeneration.Prompts);
+        Assert.Contains("Opens with \"quote\" and closes with \"end quote\"", prompt);
+    }
+
+    [Fact]
+    public async Task StopAsync_WithEverySpokenCommandDisabled_OmitsTheCommandBlock()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _settings.Current.SpeechCommands.DisabledBuiltInIds = [.. BuiltInSpeechCommands.All.Select(command => command.Id)];
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        var prompt = Assert.Single(_textGeneration.Prompts);
+        Assert.DoesNotContain("Opens with \"quote\"", prompt);
+    }
+
+    [Fact]
     public async Task StopAsync_WithPostProcessingAndADictionaryEntry_FeedsTheReplacedText()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -485,6 +521,7 @@ public class DictationCoordinatorTests
             _textGeneration,
             prompts,
             _dictionary,
+            _speechCommands,
             _history,
             _injector,
             settings,

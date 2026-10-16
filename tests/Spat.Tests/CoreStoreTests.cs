@@ -237,16 +237,16 @@ public class PromptServiceTests
     }
 
     [Fact]
-    public void BuiltInPrompt_IncludesSpokenPunctuationExamples()
+    public void BuiltInPrompt_IncludesTheSpokenPunctuationExamplesAndTheBlockPlaceholders()
     {
         var instructions = TranscriptionPrompt.BuiltInInstructions;
 
         Assert.Contains("release dash candidate", instructions);
         Assert.Contains("release-candidate", instructions);
-        Assert.Contains("quote blue mode end quote", instructions);
-        Assert.Contains("\"blue mode\"", instructions);
         Assert.Contains("visit github dot com", instructions);
         Assert.Contains("visit github.com", instructions);
+        Assert.Contains(PromptRenderer.SpeechCommandsPlaceholder, instructions);
+        Assert.Contains(PromptRenderer.DictionaryPlaceholder, instructions);
     }
 
     [Fact]

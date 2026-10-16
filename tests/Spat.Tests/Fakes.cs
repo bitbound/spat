@@ -70,6 +70,8 @@ public sealed class TestPlatformPaths : IPlatformPaths
 
     public string DictionaryFilePath => "/config/spat/dictionary.json";
 
+    public string SpeechCommandsFilePath => "/config/spat/speech-commands.json";
+
     public string HistoryFilePath => "/data/spat/history.json";
 
     public string AudioDirectory => "/data/spat/audio";

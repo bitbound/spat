@@ -12,6 +12,8 @@ public interface IPlatformPaths
 
     string DictionaryFilePath { get; }
 
+    string SpeechCommandsFilePath { get; }
+
     string HistoryFilePath { get; }
 
     string AudioDirectory { get; }

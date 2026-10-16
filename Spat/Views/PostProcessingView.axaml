@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Spat.ViewModels"
+             xmlns:sc="using:Spat.Libraries.Core.SpeechCommands"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="900"
@@ -172,7 +173,80 @@
                      MinHeight="140"
                      MaxHeight="360"
                      IsEnabled="{Binding !IsPromptReadOnly}"
-                     PlaceholderText="Instructions. Use ${stt_output} for the transcription and ${dictionary} for the custom dictionary block." />
+                     PlaceholderText="Instructions. Use ${stt_output} for the transcription, ${dictionary} for the custom dictionary block, and ${speech_commands} for the spoken commands." />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="Card">
+          <StackPanel Spacing="10">
+            <TextBlock Classes="h2" Text="Spoken commands" />
+
+            <TextBlock Classes="caption"
+                       TextWrapping="Wrap"
+                       Text="The speaker wraps words in a command by saying its start phrase, the words, and then its end phrase. For example, &quot;quote&quot; opens a block and &quot;end quote&quot; closes it, so the words between them get wrapped in quotation marks. The model leaves both phrases out of the result. Commands apply only while post-processing runs, and their phrases are left alone when they arrive without a matching close." />
+
+            <TextBlock Classes="field" Text="Built-in commands" />
+
+            <ItemsControl ItemsSource="{Binding BuiltInCommands}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sc:SpeechCommand">
+                  <StackPanel Spacing="2" Margin="0,0,0,8">
+                    <CheckBox Content="{Binding Name}" IsChecked="{Binding Enabled}" />
+                    <TextBlock Classes="caption"
+                               TextWrapping="Wrap"
+                               Margin="28,0,0,0"
+                               Text="{Binding Instructions}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Classes="field" Text="Your commands" Margin="0,4,0,0" />
+
+            <ItemsControl ItemsSource="{Binding CustomCommands}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sc:SpeechCommand">
+                  <StackPanel Spacing="6" Margin="0,0,0,12">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                      <TextBox Text="{Binding StartPhrase}"
+                               PlaceholderText="start phrase, e.g. shout" />
+                      <CheckBox Grid.Column="1"
+                                IsChecked="{Binding Enabled}"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="Off keeps the command without applying it" />
+                      <Button Grid.Column="2"
+                              Content="Remove"
+                              Classes="Error VariantText Small"
+                              Command="{Binding $parent[UserControl].((vm:PostProcessingViewModel)DataContext).RemoveCommand}"
+                              CommandParameter="{Binding}" />
+                    </Grid>
+
+                    <TextBox Text="{Binding EndPhrasesText}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="34"
+                             MaxHeight="90"
+                             PlaceholderText="end phrases, one per line, e.g. end shout" />
+
+                    <TextBox Text="{Binding Instructions}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="52"
+                             MaxHeight="140"
+                             PlaceholderText="what to do with the words in between, e.g. write them in upper case and remove the spaces" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Button Content="Add command"
+                    Classes="Primary VariantOutlined"
+                    HorizontalAlignment="Left"
+                    Command="{Binding AddCommand}" />
+
+            <TextBlock Classes="caption"
+                       TextWrapping="Wrap"
+                       Text="Commands are saved with the Save button. A command without a start phrase, an end phrase, or instructions is dropped at save." />
           </StackPanel>
         </Border>
 
