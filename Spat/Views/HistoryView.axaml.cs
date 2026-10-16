@@ -1,6 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using Spat.Services;
 using Spat.ViewModels;
@@ -53,5 +55,15 @@ public partial class HistoryView : UserControl
             // showing rather than silently doing nothing.
             _snackbars.Show($"Copy failed: {ex.Message}", SnackbarKind.Error);
         }
+    }
+
+    private void OnScrollToTopClicked(object? sender, RoutedEventArgs e)
+    {
+        if (HistoryList.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is not { } scroll)
+        {
+            return;
+        }
+
+        scroll.Offset = new Vector(scroll.Offset.X, 0);
     }
 }
