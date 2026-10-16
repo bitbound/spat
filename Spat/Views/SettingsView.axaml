@@ -43,7 +43,8 @@
                               ToolTip.Tip="Show the key"
                               Margin="4,0,0,0">
                   <Panel>
-                    <PathIcon Data="{StaticResource eye_off_regular}" />
+                    <PathIcon Data="{StaticResource eye_off_regular}"
+                              IsVisible="{Binding !#SpeechApiKeyBox.RevealPassword}" />
                     <PathIcon Data="{StaticResource eye_show_regular}"
                               IsVisible="{Binding #SpeechApiKeyBox.RevealPassword}" />
                   </Panel>
