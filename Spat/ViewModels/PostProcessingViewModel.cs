@@ -12,88 +12,85 @@ public sealed partial class PostProcessingViewModel : SettingsPageViewModel<Post
     private readonly IPromptService _prompts;
     private readonly ITextGenerationClient _textGeneration;
 
-    [ObservableProperty]
-    private bool _postProcessingEnabled;
+  [ObservableProperty]
+  public partial bool PostProcessingEnabled { get; set; }
 
-    [ObservableProperty]
-    private int _postTimeoutSeconds = PostProcessingSettings.DefaultTimeoutSeconds;
+  [ObservableProperty]
+  public partial int PostTimeoutSeconds { get; set; } = PostProcessingSettings.DefaultTimeoutSeconds;
+  [ObservableProperty]
+  public partial string? PostEndpoint { get; set; }
 
-    [ObservableProperty]
-    private string? _postEndpoint;
+  [ObservableProperty]
+  public partial string? PostApiKey { get; set; }
+  [ObservableProperty]
+  public partial string? PostModelId { get; set; }
 
-    [ObservableProperty]
-    private string? _postApiKey;
-
-    [ObservableProperty]
-    private string? _postModelId;
-
-    [ObservableProperty]
+  [ObservableProperty]
     private ObservableCollection<string> _postModels = [];
 
-    [ObservableProperty]
-    private bool _isLoadingPostModels;
+  [ObservableProperty]
+  public partial bool IsLoadingPostModels { get; set; }
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string? _postModelsMessage;
 
-    [ObservableProperty]
-    private string _thinkingMode = "Not set";
+  [ObservableProperty]
+  public partial string ThinkingMode { get; set; } = "Not set";
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _reasoningEffort = "Not set";
 
-    [ObservableProperty]
-    private string _temperature = string.Empty;
+  [ObservableProperty]
+  public partial string Temperature { get; set; } = string.Empty;
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _topP = string.Empty;
 
-    [ObservableProperty]
-    private string _maxCompletionTokens = string.Empty;
+  [ObservableProperty]
+  public partial string MaxCompletionTokens { get; set; } = string.Empty;
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _maxTokens = string.Empty;
 
-    [ObservableProperty]
-    private string _frequencyPenalty = string.Empty;
+  [ObservableProperty]
+  public partial string FrequencyPenalty { get; set; } = string.Empty;
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _presencePenalty = string.Empty;
 
-    [ObservableProperty]
-    private string _repetitionPenalty = string.Empty;
+  [ObservableProperty]
+  public partial string RepetitionPenalty { get; set; } = string.Empty;
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _seed = string.Empty;
 
-    [ObservableProperty]
-    private string _nChoices = string.Empty;
+  [ObservableProperty]
+  public partial string NChoices { get; set; } = string.Empty;
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _stopSequence = string.Empty;
 
-    [ObservableProperty]
-    private string _responseFormat = string.Empty;
+  [ObservableProperty]
+  public partial string ResponseFormat { get; set; } = string.Empty;
 
-    [ObservableProperty]
+  [ObservableProperty]
     private string _advancedOverridesJson = string.Empty;
 
-    [ObservableProperty]
-    private ObservableCollection<PromptOption> _promptOptions = [];
+  [ObservableProperty]
+  public partial ObservableCollection<PromptOption> PromptOptions { get; set; } = [];
 
-    [ObservableProperty]
+  [ObservableProperty]
     private PromptOption? _selectedPrompt;
 
-    [ObservableProperty]
-    private string _promptTitle = string.Empty;
+  [ObservableProperty]
+  public partial string PromptTitle { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    private string _promptInstructions = string.Empty;
+  [ObservableProperty]
+  public partial string PromptInstructions { get; set; } = string.Empty;
+  [ObservableProperty]
+  public partial bool IsPromptReadOnly { get; set; }
 
-    [ObservableProperty]
-    private bool _isPromptReadOnly;
-
-    public PostProcessingViewModel(ISettingsService settings, IPromptService prompts, ITextGenerationClient textGeneration)
+  public PostProcessingViewModel(ISettingsService settings, IPromptService prompts, ITextGenerationClient textGeneration)
     {
         _settings = settings;
         _prompts = prompts;

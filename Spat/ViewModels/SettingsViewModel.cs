@@ -19,91 +19,81 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
     private readonly FileLoggerProvider _fileLogger;
     private readonly LogLevelSwitch _logLevel;
 
-    [ObservableProperty]
-    private bool _startOnLogin;
+  [ObservableProperty]
+  public partial bool StartOnLogin { get; set; }
 
-    [ObservableProperty]
-    private string? _deviceMessage;
+  [ObservableProperty]
+  public partial string? DeviceMessage { get; set; }
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(HotkeyDisplay))]
+  public partial string Hotkey { get; set; } = AppSettings.DefaultHotkey;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HotkeyDisplay))]
-    private string _hotkey = AppSettings.DefaultHotkey;
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(HotkeyDisplay))]
+  public partial bool IsCapturingHotkey { get; set; }
+  [ObservableProperty]
+  public partial string? HotkeyCaptureMessage { get; set; }
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HotkeyDisplay))]
-    private bool _isCapturingHotkey;
+  [ObservableProperty]
+  public partial string TriggerModeName { get; set; } = "Tap";
+  [ObservableProperty]
+  public partial string ThemeModeName { get; set; } = "System";
 
-    [ObservableProperty]
-    private string? _hotkeyCaptureMessage;
+  [ObservableProperty]
+  public partial int HistoryItemsToKeep { get; set; } = 50;
+  [ObservableProperty]
+  public partial bool KeepRecordings { get; set; } = true;
 
-    [ObservableProperty]
-    private string _triggerModeName = "Tap";
+  [ObservableProperty]
+  public partial bool CheckForUpdates { get; set; } = true;
+  [ObservableProperty]
+  public partial int MaximumRecordingSeconds { get; set; } = 120;
 
-    [ObservableProperty]
-    private string _themeModeName = "System";
+  [ObservableProperty]
+  public partial float SilenceRmsThreshold { get; set; } = AppSettings.DefaultSilenceRmsThreshold;
+  [ObservableProperty]
+  public partial int TypingDelayMs { get; set; } = AppSettings.DefaultTypingDelayMs;
 
-    [ObservableProperty]
-    private int _historyItemsToKeep = 50;
+  [ObservableProperty]
+  public partial bool DebugLogging { get; set; }
+  [ObservableProperty]
+  public partial ObservableCollection<DeviceOption> DeviceOptions { get; set; } = [];
 
-    [ObservableProperty]
-    private bool _keepRecordings = true;
+  [ObservableProperty]
+  public partial DeviceOption? SelectedDevice { get; set; }
+  [ObservableProperty]
+  public partial string? SpeechEndpoint { get; set; }
 
-    [ObservableProperty]
-    private bool _checkForUpdates = true;
+  [ObservableProperty]
+  public partial string? SpeechApiKey { get; set; }
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(SpeechModelWarning))]
+  [NotifyPropertyChangedFor(nameof(HasSpeechModelWarning))]
+  public partial string? SpeechModelId { get; set; }
 
-    [ObservableProperty]
-    private int _maximumRecordingSeconds = 120;
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(SpeechModelWarning))]
+  [NotifyPropertyChangedFor(nameof(HasSpeechModelWarning))]
+  public partial bool ModelSelectionEnabled { get; set; } = true;
+  [ObservableProperty]
+  public partial ObservableCollection<string> SpeechModels { get; set; } = [];
 
-    [ObservableProperty]
-    private float _silenceRmsThreshold = AppSettings.DefaultSilenceRmsThreshold;
+  [ObservableProperty]
+  public partial bool IsLoadingSpeechModels { get; set; }
 
-    [ObservableProperty]
-    private int _typingDelayMs = AppSettings.DefaultTypingDelayMs;
-
-    [ObservableProperty]
-    private bool _debugLogging;
-
-    [ObservableProperty]
-    private ObservableCollection<DeviceOption> _deviceOptions = [];
-
-    [ObservableProperty]
-    private DeviceOption? _selectedDevice;
-
-    [ObservableProperty]
-    private string? _speechEndpoint;
-
-    [ObservableProperty]
-    private string? _speechApiKey;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SpeechModelWarning))]
-    [NotifyPropertyChangedFor(nameof(HasSpeechModelWarning))]
-    private string? _speechModelId;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SpeechModelWarning))]
-    [NotifyPropertyChangedFor(nameof(HasSpeechModelWarning))]
-    private bool _modelSelectionEnabled = true;
-
-    [ObservableProperty]
-    private ObservableCollection<string> _speechModels = [];
-
-    [ObservableProperty]
-    private bool _isLoadingSpeechModels;
-
-    [ObservableProperty]
+  [ObservableProperty]
     private string? _speechModelsMessage;
 
-    [ObservableProperty]
-    private bool _isPublisherTrusted;
+  [ObservableProperty]
+  public partial bool IsPublisherTrusted { get; set; }
 
-    [ObservableProperty]
+  [ObservableProperty]
     private bool _isTrustingPublisher;
 
-    [ObservableProperty]
-    private string? _publisherTrustMessage;
+  [ObservableProperty]
+  public partial string? PublisherTrustMessage { get; set; }
 
-    public SettingsViewModel(
+  public SettingsViewModel(
         ISettingsService settings,
         IAudioCaptureDeviceEnumerator devices,
         ISpeechToTextClient speechToText,

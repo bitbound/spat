@@ -5,10 +5,10 @@ public sealed partial class NavItemViewModel : ObservableObject
     private readonly INavigationProvider _navigation;
     private readonly Type _destinationType;
 
-    [ObservableProperty]
-    private bool _isSelected;
+  [ObservableProperty]
+  public partial bool IsSelected { get; set; }
 
-    public NavItemViewModel(string iconKey, string label, INavigationProvider navigation, Type destinationType)
+  public NavItemViewModel(string iconKey, string label, INavigationProvider navigation, Type destinationType)
     {
         IconKey = iconKey;
         Label = label;

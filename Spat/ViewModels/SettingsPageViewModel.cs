@@ -12,13 +12,13 @@ public abstract partial class SettingsPageViewModel<[System.Diagnostics.CodeAnal
 {
     private DispatcherTimer? _saveMessageTimer;
 
-    [ObservableProperty]
-    private string? _saveMessage;
+  [ObservableProperty]
+  public partial string? SaveMessage { get; set; }
 
-    [ObservableProperty]
-    private string? _saveError;
+  [ObservableProperty]
+  public partial string? SaveError { get; set; }
 
-    protected void ReportSaved()
+  protected void ReportSaved()
     {
         SaveError = null;
         SaveMessage = "Saved.";

@@ -23,26 +23,25 @@ public sealed partial class AboutViewModel : ViewModelBase<AboutView>
     private readonly IAppInfo _appInfo;
     private readonly IUpdateService _updates;
 
-    [ObservableProperty]
-    private string _appVersion = string.Empty;
+  [ObservableProperty]
+  public partial string AppVersion { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsCheckingForUpdates))]
-    [NotifyPropertyChangedFor(nameof(IsUpToDate))]
-    [NotifyPropertyChangedFor(nameof(IsUpdateAvailable))]
-    [NotifyPropertyChangedFor(nameof(IsApplying))]
-    [NotifyPropertyChangedFor(nameof(IsBusy))]
-    [NotifyPropertyChangedFor(nameof(HasUpdateCheckFailed))]
-    [NotifyPropertyChangedFor(nameof(UpdateStatusText))]
-    [NotifyPropertyChangedFor(nameof(UpdateStatusIconKey))]
-    [NotifyPropertyChangedFor(nameof(UpdateStatusTooltip))]
-    private UpdateIndicatorState _updateState = UpdateIndicatorState.NotChecked;
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(IsCheckingForUpdates))]
+  [NotifyPropertyChangedFor(nameof(IsUpToDate))]
+  [NotifyPropertyChangedFor(nameof(IsUpdateAvailable))]
+  [NotifyPropertyChangedFor(nameof(IsApplying))]
+  [NotifyPropertyChangedFor(nameof(IsBusy))]
+  [NotifyPropertyChangedFor(nameof(HasUpdateCheckFailed))]
+  [NotifyPropertyChangedFor(nameof(UpdateStatusText))]
+  [NotifyPropertyChangedFor(nameof(UpdateStatusIconKey))]
+  [NotifyPropertyChangedFor(nameof(UpdateStatusTooltip))]
+  public partial UpdateIndicatorState UpdateState { get; set; } = UpdateIndicatorState.NotChecked;
+  [ObservableProperty]
+  [NotifyPropertyChangedFor(nameof(UpdateStatusText))]
+  public partial string? AvailableVersion { get; set; }
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(UpdateStatusText))]
-    private string? _availableVersion;
-
-    public AboutViewModel(IAppInfo appInfo, IUpdateService updates)
+  public AboutViewModel(IAppInfo appInfo, IUpdateService updates)
     {
         _appInfo = appInfo;
         _updates = updates;

@@ -17,22 +17,20 @@ public sealed partial class HistoryViewModel : ViewModelBase<HistoryView>
     private CancellationTokenSource? _playback;
     private Guid? _playingId;
 
-    [ObservableProperty]
-    private ObservableCollection<HistoryItemViewModel> _entries = [];
+  [ObservableProperty]
+  public partial ObservableCollection<HistoryItemViewModel> Entries { get; set; } = [];
 
-    [ObservableProperty]
-    private HistoryItemViewModel? _selectedEntry;
+  [ObservableProperty]
+  public partial HistoryItemViewModel? SelectedEntry { get; set; }
+  [ObservableProperty]
+  public partial bool HasEntries { get; set; }
 
-    [ObservableProperty]
-    private bool _hasEntries;
+  [ObservableProperty]
+  public partial bool CanDelete { get; set; }
+  [ObservableProperty]
+  public partial string? PlaybackError { get; set; }
 
-    [ObservableProperty]
-    private bool _canDelete;
-
-    [ObservableProperty]
-    private string? _playbackError;
-
-    public HistoryViewModel(
+  public HistoryViewModel(
         IHistoryService history,
         IRecordingStore recordings,
         IAudioPlayer player,
@@ -180,10 +178,10 @@ public sealed partial class HistoryItemViewModel : ObservableObject
 
     public string? Transcription { get; }
 
-    [ObservableProperty]
-    private bool _isPlaying;
+  [ObservableProperty]
+  public partial bool IsPlaying { get; set; }
 
-    public static HistoryItemViewModel Create(HistoryEntry entry, bool hasAudio)
+  public static HistoryItemViewModel Create(HistoryEntry entry, bool hasAudio)
     {
         return new HistoryItemViewModel(entry, hasAudio);
     }

@@ -10,16 +10,15 @@ public sealed partial class DictionaryViewModel : SettingsPageViewModel<Dictiona
     private readonly ISettingsService _settings;
     private readonly ICustomDictionaryService _dictionary;
 
-    [ObservableProperty]
-    private ObservableCollection<CustomDictionaryEntry> _dictionaryEntries = [];
+  [ObservableProperty]
+  public partial ObservableCollection<CustomDictionaryEntry> DictionaryEntries { get; set; } = [];
 
-    [ObservableProperty]
-    private bool _hintFirstPassEnabled = true;
+  [ObservableProperty]
+  public partial bool HintFirstPassEnabled { get; set; } = true;
+  [ObservableProperty]
+  public partial bool IncludeInPostProcessingEnabled { get; set; } = true;
 
-    [ObservableProperty]
-    private bool _includeInPostProcessingEnabled = true;
-
-    public DictionaryViewModel(ISettingsService settings, ICustomDictionaryService dictionary)
+  public DictionaryViewModel(ISettingsService settings, ICustomDictionaryService dictionary)
     {
         _settings = settings;
         _dictionary = dictionary;

@@ -10,253 +10,249 @@ namespace Spat.ViewModels;
 
 public interface IMainWindowViewModel : IViewModelBase
 {
-    ObservableCollection<NavItemViewModel> NavigationItems { get; }
+  ObservableCollection<NavItemViewModel> NavigationItems { get; }
 
-    IViewModelBase? CurrentViewModel { get; set; }
+  IViewModelBase? CurrentViewModel { get; set; }
 }
 
 public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindowViewModel
 {
-    private readonly IDictationCoordinator _dictation;
-    private readonly IGlobalHotkeySource _hotkeys;
-    private readonly INavigationProvider _navigation;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ISettingsService _settings;
-    private readonly ISnackbarService _snackbars;
-    private readonly IUpdateService _updates;
+  private readonly IDictationCoordinator _dictation;
+  private readonly IGlobalHotkeySource _hotkeys;
+  private readonly INavigationProvider _navigation;
+  private readonly ISettingsService _settings;
+  private readonly ISnackbarService _snackbars;
+  private readonly IUpdateService _updates;
 
-    private string? _boundHotkeySignature;
-    private bool _isBindingHotkey;
+  private string? _boundHotkeySignature;
+  private bool _isBindingHotkey;
 
-    [ObservableProperty]
-    private IViewModelBase? _currentViewModel;
+  [ObservableProperty]
+  public partial IViewModelBase? CurrentViewModel { get; set; }
 
-    [ObservableProperty]
-    private string _dictationStatus = "Idle";
+  [ObservableProperty]
+  public partial string DictationStatus { get; set; } = "Idle";
+  [ObservableProperty]
+  public partial bool IsListening { get; set; }
 
-    [ObservableProperty]
-    private bool _isListening;
+  [ObservableProperty]
+  public partial bool IsWorking { get; set; }
 
-    [ObservableProperty]
-    private bool _isWorking;
+  [ObservableProperty]
+  public partial string? StatusError { get; set; }
 
-    [ObservableProperty]
-    private string? _statusError;
+  [ObservableProperty]
+  public partial string? HotkeyError { get; set; }
+  [ObservableProperty]
+  public partial bool IsUpdateAvailable { get; set; }
 
-    [ObservableProperty]
-    private string? _hotkeyError;
+  [ObservableProperty]
+  public partial string? UpdateVersion { get; set; }
 
-    [ObservableProperty]
-    private bool _isUpdateAvailable;
 
-    [ObservableProperty]
-    private string? _updateVersion;
+  public MainWindowViewModel(
+      INavigationProvider navigation,
+      IDictationCoordinator dictation,
+      IGlobalHotkeySource hotkeys,
+      ISettingsService settings,
+      ISnackbarService snackbars,
+      IUpdateService updates)
+  {
+    _navigation = navigation;
+    _dictation = dictation;
+    _hotkeys = hotkeys;
+    _settings = settings;
+    _snackbars = snackbars;
+    _updates = updates;
 
-    public MainWindowViewModel(
-        INavigationProvider navigation,
-        IServiceProvider serviceProvider,
-        IDictationCoordinator dictation,
-        IGlobalHotkeySource hotkeys,
-        ISettingsService settings,
-        ISnackbarService snackbars,
-        IUpdateService updates)
+    _dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(RefreshDictationStatus);
+    _dictation.RecordingLimitReached += (_, args) => Dispatcher.UIThread.Post(() => ReportRecordingLimit(args.Limit));
+    _hotkeys.Activated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyActivated);
+    _hotkeys.Deactivated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyDeactivated);
+    _hotkeys.BindingLost += (_, _) => Dispatcher.UIThread.Post(OnHotkeyBindingLost);
+    _settings.SettingsChanged += (_, _) => Dispatcher.UIThread.Post(RebindHotkeyIfChanged);
+    _updates.UpdateAvailable += (_, info) => Dispatcher.UIThread.Post(() => ShowUpdate(info));
+  }
+
+  public ObservableCollection<NavItemViewModel> NavigationItems { get; } = [];
+
+  protected override async Task OnInitializeAsync()
+  {
+    await base.OnInitializeAsync();
+
+    NavigationItems.Add(new NavItemViewModel("settings_regular", "Settings", _navigation, typeof(SettingsViewModel)));
+    NavigationItems.Add(new NavItemViewModel("book_regular", "Dictionary", _navigation, typeof(DictionaryViewModel)));
+    NavigationItems.Add(new NavItemViewModel("magic_wand_regular", "Post-processing", _navigation, typeof(PostProcessingViewModel)));
+    NavigationItems.Add(new NavItemViewModel("history_regular", "History", _navigation, typeof(HistoryViewModel)));
+    NavigationItems.Add(new NavItemViewModel("info_regular", "About", _navigation, typeof(AboutViewModel)));
+
+    await _navigation.NavigateTo<SettingsViewModel>();
+
+    RefreshDictationStatus();
+    _ = StartHotkeyAsync();
+    _ = CheckForUpdatesAsync();
+  }
+
+  partial void OnIsListeningChanged(bool value)
+  {
+    if (value)
     {
-        _navigation = navigation;
-        _serviceProvider = serviceProvider;
-        _dictation = dictation;
-        _hotkeys = hotkeys;
-        _settings = settings;
-        _snackbars = snackbars;
-        _updates = updates;
+      DictationStatus = "Listening";
+    }
+  }
 
-        _dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(RefreshDictationStatus);
-        _dictation.RecordingLimitReached += (_, args) => Dispatcher.UIThread.Post(() => ReportRecordingLimit(args.Limit));
-        _hotkeys.Activated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyActivated);
-        _hotkeys.Deactivated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyDeactivated);
-        _hotkeys.BindingLost += (_, _) => Dispatcher.UIThread.Post(OnHotkeyBindingLost);
-        _settings.SettingsChanged += (_, _) => Dispatcher.UIThread.Post(RebindHotkeyIfChanged);
-        _updates.UpdateAvailable += (_, info) => Dispatcher.UIThread.Post(() => ShowUpdate(info));
+  [RelayCommand]
+  private async Task ApplyUpdateAsync()
+  {
+    await _updates.ApplyAsync();
+  }
+
+  private async Task StartHotkeyAsync()
+  {
+    // A rebind can be requested from the hotkey callback, the settings save, or startup, so only
+    // one may be in flight or several bindings could race for the same shortcut.
+    if (_isBindingHotkey)
+    {
+      return;
     }
 
-    public ObservableCollection<NavItemViewModel> NavigationItems { get; } = [];
+    _isBindingHotkey = true;
+    HotkeyError = null;
 
-    protected override async Task OnInitializeAsync()
+    var signature = HotkeySignature();
+
+    try
     {
-        await base.OnInitializeAsync();
+      var bound = await _hotkeys.BindAsync(_settings.Current.Hotkey);
 
-        NavigationItems.Add(new NavItemViewModel("settings_regular", "Settings", _navigation, typeof(SettingsViewModel)));
-        NavigationItems.Add(new NavItemViewModel("book_regular", "Dictionary", _navigation, typeof(DictionaryViewModel)));
-        NavigationItems.Add(new NavItemViewModel("magic_wand_regular", "Post-processing", _navigation, typeof(PostProcessingViewModel)));
-        NavigationItems.Add(new NavItemViewModel("history_regular", "History", _navigation, typeof(HistoryViewModel)));
-        NavigationItems.Add(new NavItemViewModel("info_regular", "About", _navigation, typeof(AboutViewModel)));
+      if (!bound)
+      {
+        HotkeyError = "Windows rejected the shortcut. Check the log, and try a different combination.";
+        return;
+      }
 
-        await _navigation.NavigateTo<SettingsViewModel>();
+      _boundHotkeySignature = signature;
+      HotkeyError = null;
+    }
+    catch (Exception ex)
+    {
+      HotkeyError = ex.Message;
+    }
+    finally
+    {
+      _isBindingHotkey = false;
+    }
+  }
 
-        RefreshDictationStatus();
-        _ = StartHotkeyAsync();
-        _ = CheckForUpdatesAsync();
+  // Kept for parity with hotkey backends that can drop their session; the Windows hook never loses
+  // the binding on its own, but if it ever signals loss the shortcut is restored rather than left dead.
+  private void OnHotkeyBindingLost()
+  {
+    HotkeyError = "The hotkey binding was lost. Rebinding the shortcut.";
+    _boundHotkeySignature = null;
+
+    _ = StartHotkeyAsync();
+  }
+
+  // Saving settings is the only way the hotkey changes, so a save with a different shortcut has to
+  // rebind. Saving something else leaves the existing binding alone.
+  private void RebindHotkeyIfChanged()
+  {
+    HotkeyError = null;
+
+    if (string.Equals(HotkeySignature(), _boundHotkeySignature, StringComparison.Ordinal))
+    {
+      return;
     }
 
-    partial void OnIsListeningChanged(bool value)
+    _ = StartHotkeyAsync();
+  }
+
+  private string HotkeySignature()
+  {
+    return $"{_settings.Current.Hotkey}|{_settings.Current.TriggerMode}";
+  }
+
+  private async Task CheckForUpdatesAsync()
+  {
+    if (!_settings.Current.CheckForUpdates)
     {
-        if (value)
-        {
-            DictationStatus = "Listening";
-        }
+      return;
     }
 
-    [RelayCommand]
-    private async Task ApplyUpdateAsync()
+    try
     {
-        await _updates.ApplyAsync();
+      var result = await _updates.CheckAsync();
+
+      if (result.Update is { } update)
+      {
+        ShowUpdate(update);
+      }
+    }
+    catch (Exception ex)
+    {
+      System.Diagnostics.Debug.WriteLine($"Update check failed: {ex}");
+    }
+  }
+
+  private void ShowUpdate(UpdateInfo info)
+  {
+    IsUpdateAvailable = true;
+    UpdateVersion = info.Version;
+  }
+
+  private void OnHotkeyActivated()
+  {
+    if (_settings.Current.TriggerMode == ShortcutTriggerMode.Press)
+    {
+      _ = _dictation.StartAsync();
+      return;
     }
 
-    private async Task StartHotkeyAsync()
+    _ = _dictation.ToggleAsync();
+  }
+
+  // Only honour the release while a hold-to-talk capture is actually open, so a stray release event
+  // cannot stop something the press never started.
+  private void OnHotkeyDeactivated()
+  {
+    if (_settings.Current.TriggerMode != ShortcutTriggerMode.Press || !_dictation.IsListening)
     {
-        // A rebind can be requested from the hotkey callback, the settings save, or startup, so only
-        // one may be in flight or several bindings could race for the same shortcut.
-        if (_isBindingHotkey)
-        {
-            return;
-        }
-
-        _isBindingHotkey = true;
-        HotkeyError = null;
-
-        var signature = HotkeySignature();
-
-        try
-        {
-            var bound = await _hotkeys.BindAsync(_settings.Current.Hotkey);
-
-            if (!bound)
-            {
-                HotkeyError = "Windows rejected the shortcut. Check the log, and try a different combination.";
-                return;
-            }
-
-            _boundHotkeySignature = signature;
-            HotkeyError = null;
-        }
-        catch (Exception ex)
-        {
-            HotkeyError = ex.Message;
-        }
-        finally
-        {
-            _isBindingHotkey = false;
-        }
+      return;
     }
 
-    // Kept for parity with hotkey backends that can drop their session; the Windows hook never loses
-    // the binding on its own, but if it ever signals loss the shortcut is restored rather than left dead.
-    private void OnHotkeyBindingLost()
-    {
-        HotkeyError = "The hotkey binding was lost. Rebinding the shortcut.";
-        _boundHotkeySignature = null;
+    _ = _dictation.StopAsync();
+  }
 
-        _ = StartHotkeyAsync();
+  private void RefreshDictationStatus()
+  {
+    IsWorking = _dictation.State is DictationState.Transcribing or DictationState.PostProcessing or DictationState.Injecting;
+    IsListening = _dictation.IsListening;
+
+    StatusError = _dictation.State == DictationState.Error ? _dictation.LastError : null;
+
+    if (_dictation.State == DictationState.Error)
+    {
+      DictationStatus = "Failed";
+      return;
     }
 
-    // Saving settings is the only way the hotkey changes, so a save with a different shortcut has to
-    // rebind. Saving something else leaves the existing binding alone.
-    private void RebindHotkeyIfChanged()
+    DictationStatus = _dictation.State switch
     {
-        HotkeyError = null;
+      DictationState.Listening => "Listening",
+      DictationState.Transcribing => "Transcribing",
+      DictationState.PostProcessing => "Post-processing",
+      DictationState.Injecting => "Typing",
+      _ => "Idle",
+    };
+  }
 
-        if (string.Equals(HotkeySignature(), _boundHotkeySignature, StringComparison.Ordinal))
-        {
-            return;
-        }
+  // The notification area lives in the main window, which is hidden whenever the user dictates from
+  // the tray. The floating indicator carries the same news; this covers the window being open.
+  private void ReportRecordingLimit(TimeSpan limit)
+  {
+    var seconds = Math.Round(limit.TotalSeconds);
 
-        _ = StartHotkeyAsync();
-    }
-
-    private string HotkeySignature()
-    {
-        return $"{_settings.Current.Hotkey}|{_settings.Current.TriggerMode}";
-    }
-
-    private async Task CheckForUpdatesAsync()
-    {
-        if (!_settings.Current.CheckForUpdates)
-        {
-            return;
-        }
-
-        try
-        {
-            var result = await _updates.CheckAsync();
-
-            if (result.Update is { } update)
-            {
-                ShowUpdate(update);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Update check failed: {ex}");
-        }
-    }
-
-    private void ShowUpdate(UpdateInfo info)
-    {
-        IsUpdateAvailable = true;
-        UpdateVersion = info.Version;
-    }
-
-    private void OnHotkeyActivated()
-    {
-        if (_settings.Current.TriggerMode == ShortcutTriggerMode.Press)
-        {
-            _ = _dictation.StartAsync();
-            return;
-        }
-
-        _ = _dictation.ToggleAsync();
-    }
-
-    // Only honour the release while a hold-to-talk capture is actually open, so a stray release event
-    // cannot stop something the press never started.
-    private void OnHotkeyDeactivated()
-    {
-        if (_settings.Current.TriggerMode != ShortcutTriggerMode.Press || !_dictation.IsListening)
-        {
-            return;
-        }
-
-        _ = _dictation.StopAsync();
-    }
-
-    private void RefreshDictationStatus()
-    {
-        IsWorking = _dictation.State is DictationState.Transcribing or DictationState.PostProcessing or DictationState.Injecting;
-        IsListening = _dictation.IsListening;
-
-        StatusError = _dictation.State == DictationState.Error ? _dictation.LastError : null;
-
-        if (_dictation.State == DictationState.Error)
-        {
-            DictationStatus = "Failed";
-            return;
-        }
-
-        DictationStatus = _dictation.State switch
-        {
-            DictationState.Listening => "Listening",
-            DictationState.Transcribing => "Transcribing",
-            DictationState.PostProcessing => "Post-processing",
-            DictationState.Injecting => "Typing",
-            _ => "Idle",
-        };
-    }
-
-    // The notification area lives in the main window, which is hidden whenever the user dictates from
-    // the tray. The floating indicator carries the same news; this covers the window being open.
-    private void ReportRecordingLimit(TimeSpan limit)
-    {
-        var seconds = Math.Round(limit.TotalSeconds);
-
-        _snackbars.Show($"Recording stopped at its {seconds:0} second limit. What it captured was kept.", SnackbarKind.Error);
-    }
+    _snackbars.Show($"Recording stopped at its {seconds:0} second limit. What it captured was kept.", SnackbarKind.Error);
+  }
 }
