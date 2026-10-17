@@ -308,7 +308,8 @@ public class PromptRendererDictionaryTests
     {
         var rendered = PromptRenderer.Render("Terms: ${dictionary}\n\nFix: ${stt_output}", "raw", "- \"a\" -> \"B\"");
 
-        Assert.Equal("Terms: - \"a\" -> \"B\"\n\nFix: raw", rendered);
+        Assert.StartsWith("Terms: - \"a\" -> \"B\"\n\nFix: ", rendered.SystemPrompt);
+        Assert.DoesNotContain("raw", rendered.SystemPrompt);
     }
 
     [Fact]
@@ -316,44 +317,43 @@ public class PromptRendererDictionaryTests
     {
         var rendered = PromptRenderer.Render("Fix the grammar.", "raw", "- \"a\" -> \"B\"");
 
-        Assert.Contains("- \"a\" -> \"B\"", rendered);
-        Assert.Contains("raw", rendered);
+        Assert.Contains("- \"a\" -> \"B\"", rendered.SystemPrompt);
+        Assert.Contains("raw", rendered.UserPrompt);
     }
 
     [Fact]
-    public void Render_WithOnlyTheOutputPlaceholder_PutsTheBlockAheadOfTheTranscription()
+    public void Render_WithOnlyTheOutputPlaceholder_PutsTheBlockAheadOfThePointer()
     {
         var rendered = PromptRenderer.Render("Fix: ${stt_output}", "raw", "- \"a\" -> \"B\"");
 
-        Assert.Equal("Fix: - \"a\" -> \"B\"\n\nraw", rendered);
+        Assert.Equal($"Fix: - \"a\" -> \"B\"\n\n{PromptRenderer.OutputPointer}", rendered.SystemPrompt);
     }
 
     [Fact]
-    public void Render_WithoutAPlaceholder_PutsTheBlockAheadOfTheTranscription()
+    public void Render_WithoutAPlaceholder_PutsTheBlockAheadOfThePointer()
     {
         var rendered = PromptRenderer.Render("Fix the grammar.", "raw", "- \"a\" -> \"B\"");
 
-        Assert.Equal("Fix the grammar.\n\n- \"a\" -> \"B\"\n\nTranscription:\nraw", rendered);
+        Assert.Equal($"Fix the grammar.\n\n- \"a\" -> \"B\"\n\n{PromptRenderer.OutputPointer}", rendered.SystemPrompt);
     }
 
     [Fact]
-    public void Render_WithTheBuiltInPrompt_PutsTheBlockAheadOfTheTranscription()
+    public void Render_WithTheBuiltInPrompt_KeepsTheBlockOutOfTheUserMessage()
     {
         const string block = "- \"control are\" -> \"ControlR\"";
 
         var rendered = PromptRenderer.Render(TranscriptionPrompt.BuiltInInstructions, "open control are settings", block);
 
-        Assert.Contains(block, rendered);
-        Assert.True(
-            rendered.IndexOf(block, StringComparison.Ordinal)
-            < rendered.IndexOf("open control are settings", StringComparison.Ordinal));
+        Assert.Contains(block, rendered.SystemPrompt);
+        Assert.Contains("open control are settings", rendered.UserPrompt);
+        Assert.DoesNotContain(block, rendered.UserPrompt);
     }
 
     [Fact]
-    public void Render_WithNoBlock_LeavesThePromptAlone()
+    public void Render_WithNoBlock_LeavesTheInstructionsAlone()
     {
         var rendered = PromptRenderer.Render("Fix: ${stt_output}", "raw", dictionaryBlock: null);
 
-        Assert.Equal("Fix: raw", rendered);
+        Assert.Equal($"Fix: {PromptRenderer.OutputPointer}", rendered.SystemPrompt);
     }
 }

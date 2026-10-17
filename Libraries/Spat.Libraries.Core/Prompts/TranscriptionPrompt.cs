@@ -33,9 +33,6 @@ public sealed class TranscriptionPrompt
         ${speech_commands}
 
         ${dictionary}
-
-        Transcription:
-        ${stt_output}
         """;
 
     public Guid Id { get; set; } = Guid.NewGuid();

@@ -12,7 +12,7 @@ namespace Spat.Libraries.Speech;
 /// </summary>
 public sealed class OpenAiTextGenerationClient(HttpClient httpClient, ISettingsService settings, ILogger<OpenAiTextGenerationClient> logger) : ITextGenerationClient
 {
-    public async Task<string> CompleteAsync(string prompt, CancellationToken cancellationToken = default)
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
     {
         var post = settings.Current.PostProcessing;
         var model = post.ModelId;
@@ -22,7 +22,7 @@ public sealed class OpenAiTextGenerationClient(HttpClient httpClient, ISettingsS
             throw new AiEndpointException("Set a post-processing model before generating text.");
         }
 
-        var payload = BuildRequestBody(model, prompt, post.Options);
+        var payload = BuildRequestBody(model, systemPrompt, userPrompt, post.Options);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, AiEndpoint.BuildUri(post.Endpoint, "/chat/completions"));
         request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
@@ -41,17 +41,29 @@ public sealed class OpenAiTextGenerationClient(HttpClient httpClient, ISettingsS
     // The ThinkingEnabled boolean is the vLLM/Qwen chat-template switch (chat_template_kwargs.enable_thinking),
     // the only vendor shape here that is itself a bool. OpenAI's toggle is the string reasoning_effort and
     // Anthropic's is a thinking object with a token budget, so both are reached through AdvancedOverridesJson.
-    private static string BuildRequestBody(string model, string prompt, TextGenerationOptions options)
+    private static string BuildRequestBody(string model, string systemPrompt, string userPrompt, TextGenerationOptions options)
     {
+        var messages = new JsonArray();
+
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            messages.Add(new JsonObject
+            {
+                ["role"] = "system",
+                ["content"] = systemPrompt,
+            });
+        }
+
+        messages.Add(new JsonObject
+        {
+            ["role"] = "user",
+            ["content"] = userPrompt,
+        });
+
         var body = new JsonObject
         {
             ["model"] = model,
-            ["messages"] = new JsonArray(
-                new JsonObject
-                {
-                    ["role"] = "user",
-                    ["content"] = prompt,
-                }),
+            ["messages"] = messages,
         };
 
         if (options.ThinkingEnabled.HasValue)

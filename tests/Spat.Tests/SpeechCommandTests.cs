@@ -242,7 +242,8 @@ public class PromptRendererSpeechCommandTests
     {
         var rendered = PromptRenderer.Render("Commands: ${speech_commands}\n\nFix: ${stt_output}", "raw", null, "- Opens with \"quote\" and closes with \"end quote\". Wrap them.");
 
-        Assert.Equal("Commands: - Opens with \"quote\" and closes with \"end quote\". Wrap them.\n\nFix: raw", rendered);
+        Assert.StartsWith("Commands: - Opens with \"quote\" and closes with \"end quote\". Wrap them.\n\nFix: ", rendered.SystemPrompt);
+        Assert.DoesNotContain("raw", rendered.SystemPrompt);
     }
 
     [Fact]
@@ -250,7 +251,7 @@ public class PromptRendererSpeechCommandTests
     {
         var rendered = PromptRenderer.Render("Fix: ${stt_output}", "raw", "- \"a\" -> \"B\"", "Commands.");
 
-        Assert.Equal("Fix: Commands.\n\n- \"a\" -> \"B\"\n\nraw", rendered);
+        Assert.Equal($"Fix: Commands.\n\n- \"a\" -> \"B\"\n\n{PromptRenderer.OutputPointer}", rendered.SystemPrompt);
     }
 
     [Fact]
@@ -258,6 +259,6 @@ public class PromptRendererSpeechCommandTests
     {
         var rendered = PromptRenderer.Render("Commands: ${speech_commands}\n\nFix: ${stt_output}", "raw", null, speechCommandsBlock: null);
 
-        Assert.Equal("Commands: \n\nFix: raw", rendered);
+        Assert.Equal($"Commands: \n\nFix: {PromptRenderer.OutputPointer}", rendered.SystemPrompt);
     }
 }

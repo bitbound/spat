@@ -277,7 +277,7 @@ public sealed class DictationCoordinator : IDictationCoordinator
                 try
                 {
                     processed = (await _textGeneration
-                        .CompleteAsync(rendered, cancellationToken)
+                        .CompleteAsync(rendered.SystemPrompt, rendered.UserPrompt, cancellationToken)
                         .ConfigureAwait(false)).Trim();
                 }
                 catch (AiEndpointException ex) when (ex.IsTimeout)

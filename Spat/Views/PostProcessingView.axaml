@@ -174,7 +174,7 @@
                      MinHeight="140"
                      MaxHeight="360"
                      IsEnabled="{Binding !IsPromptReadOnly}"
-                     PlaceholderText="Instructions. Use ${stt_output} for the transcription, ${dictionary} for the custom dictionary block, and ${speech_commands} for the spoken commands." />
+                     PlaceholderText="Instructions sent to the model ahead of the transcription. Use ${dictionary} for the custom dictionary block and ${speech_commands} for the spoken commands." />
           </StackPanel>
         </Border>
 

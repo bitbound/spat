@@ -163,13 +163,13 @@ public sealed class FakeTextGenerationClient : ITextGenerationClient
 
     public Exception? Throw { get; set; }
 
-    public List<string> Prompts { get; } = [];
+    public List<(string System, string User)> Prompts { get; } = [];
 
     public List<string?> ListEndpoints { get; } = [];
 
-    public Task<string> CompleteAsync(string prompt, CancellationToken cancellationToken = default)
+    public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
     {
-        Prompts.Add(prompt);
+        Prompts.Add((systemPrompt, userPrompt));
 
         if (Throw is not null)
         {

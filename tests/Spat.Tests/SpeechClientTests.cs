@@ -219,7 +219,7 @@ public class OpenAiTextGenerationClientTests
     {
         var (client, handler) = Create(Post(endpoint: "https://text.example.test"), _ => StubHttpMessageHandler.Json(Choice("cleaned")));
 
-        var text = await client.CompleteAsync("fix this", TestContext.Current.CancellationToken);
+        var text = await client.CompleteAsync("the rules", "fix this", TestContext.Current.CancellationToken);
 
         Assert.Equal("https://text.example.test/v1/chat/completions", handler.RequestUris[0]);
         Assert.Equal("Bearer text-key", handler.AuthorizationValues[0]);
@@ -229,8 +229,24 @@ public class OpenAiTextGenerationClientTests
         var messages = body.RootElement.GetProperty("messages").EnumerateArray().ToArray();
 
         Assert.Equal("qwen3", body.RootElement.GetProperty("model").GetString());
-        Assert.Equal("user", messages[0].GetProperty("role").GetString());
-        Assert.Equal("fix this", messages[0].GetProperty("content").GetString());
+        Assert.Equal(2, messages.Length);
+        Assert.Equal("system", messages[0].GetProperty("role").GetString());
+        Assert.Equal("the rules", messages[0].GetProperty("content").GetString());
+        Assert.Equal("user", messages[1].GetProperty("role").GetString());
+        Assert.Equal("fix this", messages[1].GetProperty("content").GetString());
+    }
+
+    [Fact]
+    public async Task CompleteAsync_WithEmptyInstructions_SendsOnlyTheUserMessage()
+    {
+        var (client, handler) = Create(Post(), _ => StubHttpMessageHandler.Json(Choice("x")));
+
+        await client.CompleteAsync(" ", "fix this", TestContext.Current.CancellationToken);
+
+        using var body = JsonDocument.Parse(handler.RequestBodies[0]);
+        var messages = body.RootElement.GetProperty("messages").EnumerateArray().ToArray();
+
+        Assert.Equal("user", Assert.Single(messages).GetProperty("role").GetString());
     }
 
     [Fact]
@@ -238,7 +254,7 @@ public class OpenAiTextGenerationClientTests
     {
         var (client, handler) = Create(Post(), _ => StubHttpMessageHandler.Json(Choice("x")));
 
-        await client.CompleteAsync("prompt", TestContext.Current.CancellationToken);
+        await client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken);
 
         using var body = JsonDocument.Parse(handler.RequestBodies[0]);
 
@@ -256,7 +272,7 @@ public class OpenAiTextGenerationClientTests
 
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json(Choice("x")));
 
-        await client.CompleteAsync("prompt", TestContext.Current.CancellationToken);
+        await client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken);
 
         using var body = JsonDocument.Parse(handler.RequestBodies[0]);
 
@@ -272,7 +288,7 @@ public class OpenAiTextGenerationClientTests
 
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json(Choice("x")));
 
-        await client.CompleteAsync("prompt", TestContext.Current.CancellationToken);
+        await client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken);
 
         using var body = JsonDocument.Parse(handler.RequestBodies[0]);
 
@@ -289,7 +305,7 @@ public class OpenAiTextGenerationClientTests
         var (client, _) = Create(settings, _ => StubHttpMessageHandler.Json(Choice("x")));
 
         var exception = await Assert.ThrowsAsync<AiEndpointException>(
-            () => client.CompleteAsync("prompt", TestContext.Current.CancellationToken));
+            () => client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken));
 
         Assert.Contains("AdvancedOverridesJson", exception.Message);
     }
@@ -300,7 +316,7 @@ public class OpenAiTextGenerationClientTests
         var (client, _) = Create(Post(), _ => StubHttpMessageHandler.Json("""{"choices":[]}"""));
 
         await Assert.ThrowsAsync<AiEndpointException>(
-            () => client.CompleteAsync("prompt", TestContext.Current.CancellationToken));
+            () => client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -312,7 +328,7 @@ public class OpenAiTextGenerationClientTests
         });
 
         var exception = await Assert.ThrowsAsync<AiEndpointException>(
-            () => client.CompleteAsync("prompt", TestContext.Current.CancellationToken));
+            () => client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken));
 
         Assert.Contains("not valid JSON", exception.Message);
     }
@@ -327,7 +343,7 @@ public class OpenAiTextGenerationClientTests
         handler.Delay = TimeSpan.FromSeconds(30);
 
         var exception = await Assert.ThrowsAsync<AiEndpointException>(
-            () => client.CompleteAsync("prompt", TestContext.Current.CancellationToken));
+            () => client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken));
 
         Assert.Contains("did not answer within 1s", exception.Message);
         Assert.True(exception.IsTimeout);
@@ -344,7 +360,7 @@ public class OpenAiTextGenerationClientTests
         var (client, handler) = Create(settings, _ => StubHttpMessageHandler.Json(Choice("cleaned")));
         handler.Delay = TimeSpan.FromSeconds(1);
 
-        var text = await client.CompleteAsync("prompt", TestContext.Current.CancellationToken);
+        var text = await client.CompleteAsync("instructions", "prompt", TestContext.Current.CancellationToken);
 
         Assert.Equal("cleaned", text);
     }

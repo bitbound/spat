@@ -129,7 +129,7 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         Assert.Equal(["cleaned up"], _injector.Typed);
-        Assert.Contains("hello there", Assert.Single(_textGeneration.Prompts));
+        Assert.Contains("hello there", Assert.Single(_textGeneration.Prompts).User);
 
         var entry = Assert.Single(_history.GetAll());
         Assert.Equal("cleaned up", entry.Text);
@@ -420,7 +420,7 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         var prompt = Assert.Single(_textGeneration.Prompts);
-        Assert.Contains("\"control are\" -> \"ControlR\"", prompt);
+        Assert.Contains("\"control are\" -> \"ControlR\"", prompt.System);
     }
 
     [Fact]
@@ -438,7 +438,8 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         var prompt = Assert.Single(_textGeneration.Prompts);
-        Assert.DoesNotContain("\"ControlR\"", prompt);
+        Assert.DoesNotContain("\"ControlR\"", prompt.System);
+        Assert.DoesNotContain("\"ControlR\"", prompt.User);
     }
 
     [Fact]
@@ -454,7 +455,7 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         var prompt = Assert.Single(_textGeneration.Prompts);
-        Assert.Contains("Opens with \"quote\" and closes with \"end quote\"", prompt);
+        Assert.Contains("Opens with \"quote\" and closes with \"end quote\"", prompt.System);
     }
 
     [Fact]
@@ -471,7 +472,8 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         var prompt = Assert.Single(_textGeneration.Prompts);
-        Assert.DoesNotContain("Opens with \"quote\"", prompt);
+        Assert.DoesNotContain("Opens with \"quote\"", prompt.System);
+        Assert.DoesNotContain("Opens with \"quote\"", prompt.User);
     }
 
     [Fact]
@@ -489,8 +491,8 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         var prompt = Assert.Single(_textGeneration.Prompts);
-        Assert.Contains("open ControlR settings", prompt);
-        Assert.DoesNotContain("open control are settings", prompt);
+        Assert.Contains("open ControlR settings", prompt.User);
+        Assert.DoesNotContain("open control are settings", prompt.User);
     }
 
     // The limit fires on a timer inside the run, so the take finishes a moment after the event.
