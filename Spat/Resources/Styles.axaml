@@ -54,6 +54,23 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <Style Selector="Border.Tip">
+    <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryColor}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+
+  <Style Selector="Border.Phrase">
+    <Setter Property="Background" Value="{DynamicResource BackgroundGrayBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="Margin" Value="0,0,8,8" />
+  </Style>
+
   <Style Selector="ToggleButton.Icon">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />

@@ -455,7 +455,7 @@ public class DictationCoordinatorTests
         await _coordinator.StopAsync(ct);
 
         var prompt = Assert.Single(_textGeneration.Prompts);
-        Assert.Contains("Opens with \"quote\" and closes with \"end quote\"", prompt.System);
+        Assert.Contains("Opens with \"quote\" and closes with \"no quote\"", prompt.System);
     }
 
     [Fact]

@@ -16,7 +16,7 @@ public sealed class SpeechCommand
     public string StartPhrase { get; set; } = string.Empty;
 
     /// <summary>
-    /// The words that close the block, e.g. "end quote". Any one of them ends it.
+    /// The words that close the block, e.g. "no quote". Any one of them ends it.
     /// </summary>
     public List<string> EndPhrases { get; set; } = [];
 
@@ -47,6 +47,14 @@ public sealed class SpeechCommand
         get => string.Join('\n', EndPhrases);
         set => EndPhrases = [.. value.Split('\n')];
     }
+
+    /// <summary>
+    /// The start and end phrases on one line, e.g. "quote" then "no quote".
+    /// </summary>
+    [JsonIgnore]
+    public string PhrasesText => EndPhrases.Count == 0
+        ? $"\"{StartPhrase}\""
+        : $"\"{StartPhrase}\" then {string.Join(" or ", EndPhrases.Select(phrase => $"\"{phrase}\""))}";
 }
 
 /// <summary>
@@ -59,28 +67,33 @@ public static class BuiltInSpeechCommands
         Create(
             "b1e5c0de-0000-4000-8000-000000000101",
             "quote",
-            "end quote",
+            "no quote",
             "Wrap the enclosed words in double quotation marks, keeping their capitalization and spacing."),
         Create(
             "b1e5c0de-0000-4000-8000-000000000102",
             "pascal",
-            "end pascal",
+            "no pascal",
             "Write the enclosed words in Pascal case, capitalizing every word and removing the spaces between them."),
         Create(
             "b1e5c0de-0000-4000-8000-000000000103",
             "camel",
-            "end camel",
+            "no camel",
             "Write the enclosed words in camel case, removing the spaces and capitalizing every word after the first."),
         Create(
             "b1e5c0de-0000-4000-8000-000000000104",
             "snake",
-            "end snake",
+            "no snake",
             "Write the enclosed words in snake case, joining the words with underscores and using lower case throughout."),
         Create(
             "b1e5c0de-0000-4000-8000-000000000105",
             "kebab",
-            "end kebab",
+            "no kebab",
             "Write the enclosed words in kebab case, joining the words with hyphens and using lower case throughout."),
+        Create(
+            "b1e5c0de-0000-4000-8000-000000000106",
+            "all caps",
+            "no caps",
+            "Write the enclosed words in upper case, keeping their spacing and punctuation."),
     ];
 
     private static SpeechCommand Create(string id, string startPhrase, string endPhrase, string instructions)

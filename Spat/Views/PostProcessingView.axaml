@@ -182,9 +182,35 @@
           <StackPanel Spacing="10">
             <TextBlock Classes="h2" Text="Spoken commands" />
 
-            <TextBlock Classes="caption"
-                       TextWrapping="Wrap"
-                       Text="The speaker wraps words in a command by saying its start phrase, the words, and then its end phrase. For example, &quot;quote&quot; opens a block and &quot;end quote&quot; closes it, so the words between them get wrapped in quotation marks. The model leaves both phrases out of the result. Commands apply only while post-processing runs, and their phrases are left alone when they arrive without a matching close." />
+            <Border Classes="Tip">
+              <StackPanel Spacing="8">
+                <TextBlock Classes="h2" FontSize="14" Text="Start and end phrases" />
+
+                <TextBlock TextWrapping="Wrap"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           Text="Say the start phrase, then the words, then the end phrase. The model drops both phrases and applies the command to the words between them." />
+
+                <ItemsControl ItemsSource="{Binding BuiltInCommands}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="sc:SpeechCommand">
+                      <Border Classes="Phrase">
+                        <TextBlock FontSize="12" Text="{Binding PhrasesText}" />
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Classes="caption"
+                           TextWrapping="Wrap"
+                           Text="Commands apply only while post-processing runs, and a start phrase that arrives without its close is left in the text as spoken." />
+              </StackPanel>
+            </Border>
 
             <TextBlock Classes="field" Text="Built-in commands" />
 
@@ -227,7 +253,7 @@
                              TextWrapping="Wrap"
                              MinHeight="34"
                              MaxHeight="90"
-                             PlaceholderText="end phrases, one per line, e.g. end shout" />
+                             PlaceholderText="end phrases, one per line, e.g. no shout" />
 
                     <TextBox Text="{Binding Instructions}"
                              AcceptsReturn="True"

@@ -11,10 +11,20 @@ public class SpeechCommandServiceTests
     {
         var commands = Create(new InMemoryFileStore()).GetBuiltIns();
 
-        Assert.Equal(["quote", "pascal", "camel", "snake", "kebab"], commands.Select(command => command.StartPhrase));
+        Assert.Equal(["quote", "pascal", "camel", "snake", "kebab", "all caps"], commands.Select(command => command.StartPhrase));
         Assert.All(commands, command => Assert.True(command.Enabled));
         Assert.All(commands, command => Assert.True(command.IsBuiltIn));
         Assert.All(commands, command => Assert.NotEmpty(command.EndPhrases));
+    }
+
+    [Fact]
+    public void GetBuiltIns_EndsEveryCommandWithNo()
+    {
+        var commands = Create(new InMemoryFileStore()).GetBuiltIns();
+
+        Assert.Equal(
+            ["no quote", "no pascal", "no camel", "no snake", "no kebab", "no caps"],
+            commands.SelectMany(command => command.EndPhrases));
     }
 
     [Fact]
@@ -119,7 +129,7 @@ public class SpeechCommandServiceTests
                 {
                     Id = BuiltInSpeechCommands.All[0].Id,
                     StartPhrase = "quote",
-                    EndPhrases = ["end quote"],
+                    EndPhrases = ["no quote"],
                     Instructions = "Someone edited the shipped command.",
                     IsBuiltIn = true,
                 },
@@ -135,7 +145,7 @@ public class SpeechCommandServiceTests
         var block = Create(new InMemoryFileStore()).BuildInstructionBlock();
 
         Assert.NotNull(block);
-        Assert.Contains("Opens with \"quote\" and closes with \"end quote\"", block);
+        Assert.Contains("Opens with \"quote\" and closes with \"no quote\"", block);
         Assert.Contains("removing the spaces between them", block);
     }
 
@@ -233,6 +243,22 @@ public class SpeechCommandTests
 
         Assert.Equal(["end shout", "stop shouting"], command.EndPhrases);
     }
+
+    [Fact]
+    public void PhrasesText_ShowsTheStartPhraseAndItsEndPhrase()
+    {
+        var command = new SpeechCommand { StartPhrase = "quote", EndPhrases = ["no quote"] };
+
+        Assert.Equal("\"quote\" then \"no quote\"", command.PhrasesText);
+    }
+
+    [Fact]
+    public void PhrasesText_JoinsEveryEndPhrase()
+    {
+        var command = new SpeechCommand { StartPhrase = "shout", EndPhrases = ["no shout", "stop shouting"] };
+
+        Assert.Equal("\"shout\" then \"no shout\" or \"stop shouting\"", command.PhrasesText);
+    }
 }
 
 public class PromptRendererSpeechCommandTests
@@ -240,9 +266,9 @@ public class PromptRendererSpeechCommandTests
     [Fact]
     public void Render_WithTheSpeechCommandsPlaceholder_ReplacesIt()
     {
-        var rendered = PromptRenderer.Render("Commands: ${speech_commands}\n\nFix: ${stt_output}", "raw", null, "- Opens with \"quote\" and closes with \"end quote\". Wrap them.");
+        var rendered = PromptRenderer.Render("Commands: ${speech_commands}\n\nFix: ${stt_output}", "raw", null, "- Opens with \"quote\" and closes with \"no quote\". Wrap them.");
 
-        Assert.StartsWith("Commands: - Opens with \"quote\" and closes with \"end quote\". Wrap them.\n\nFix: ", rendered.SystemPrompt);
+        Assert.StartsWith("Commands: - Opens with \"quote\" and closes with \"no quote\". Wrap them.\n\nFix: ", rendered.SystemPrompt);
         Assert.DoesNotContain("raw", rendered.SystemPrompt);
     }
 
