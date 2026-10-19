@@ -381,7 +381,10 @@ public class PromptRendererTests
         var rendered = PromptRenderer.Render("Clean up: ${stt_output}", "hello  there");
 
         Assert.Equal($"Clean up: {PromptRenderer.OutputPointer}", rendered.SystemPrompt);
-        Assert.Contains("<transcription>\nhello  there\n</transcription>", rendered.UserPrompt);
+
+        // The renderer builds this message from a raw string literal, whose line breaks follow the
+        // source file's endings, so they are CRLF on a Windows checkout. Only the wrapping is under test.
+        Assert.Contains("<transcription>\nhello  there\n</transcription>", rendered.UserPrompt.Replace("\r\n", "\n"));
         Assert.DoesNotContain("hello", rendered.SystemPrompt);
     }
 
