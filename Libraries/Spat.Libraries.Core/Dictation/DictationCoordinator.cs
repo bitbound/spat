@@ -17,6 +17,12 @@ public sealed class DictationCoordinator : IDictationCoordinator
 {
     private const float MinimumActiveSampleRatio = 0.01f;
 
+    /// <summary>
+    /// How much of a post-processing failure reason reaches a listener. Long enough for an endpoint
+    /// and its status, short enough to sit on one line of the status indicator.
+    /// </summary>
+    private const int MaxReasonLength = 160;
+
     private readonly ITextInputInjector _injector;
     private readonly ILogger<DictationCoordinator> _logger;
     private readonly TimeProvider _timeProvider;
@@ -71,6 +77,8 @@ public sealed class DictationCoordinator : IDictationCoordinator
     public event EventHandler? StateChanged;
 
     public event EventHandler<DictationLimitReachedEventArgs>? RecordingLimitReached;
+
+    public event EventHandler<PostProcessingFailedEventArgs>? PostProcessingFailed;
 
     public async Task ToggleAsync(CancellationToken cancellationToken = default)
     {
@@ -280,11 +288,23 @@ public sealed class DictationCoordinator : IDictationCoordinator
                         .CompleteAsync(rendered.SystemPrompt, rendered.UserPrompt, cancellationToken)
                         .ConfigureAwait(false)).Trim();
                 }
-                catch (AiEndpointException ex) when (ex.IsTimeout)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    // The words are already on hand, so a slow cleanup must not take them along:
-                    // inject the raw transcription instead of failing the whole dictation.
-                    _logger.LogWarning(ex, "Post-processing timed out; using the raw transcription.");
+                    // The words are already on hand, so a cleanup pass that cannot be reached, timed
+                    // out, or answered badly must not take them along. The raw transcription is typed
+                    // and the reason is reported instead of the whole dictation failing.
+                    if (ex is AiEndpointException or HttpRequestException)
+                    {
+                        _logger.LogWarning(ex, "Post-processing failed; using the raw transcription.");
+                    }
+                    else
+                    {
+                        // Not an endpoint problem but a fault in our own code, so it must stay visible
+                        // in error telemetry even though the take itself is still rescued.
+                        _logger.LogError(ex, "Unexpected post-processing fault; using the raw transcription.");
+                    }
+
+                    ReportPostProcessingFailed(ex.Message);
                     processed = null;
                 }
 
@@ -412,6 +432,31 @@ public sealed class DictationCoordinator : IDictationCoordinator
         _logger.LogWarning("The recording hit its {Seconds:0} second limit and stopped.", limit.TotalSeconds);
 
         RecordingLimitReached?.Invoke(this, new DictationLimitReachedEventArgs(limit));
+    }
+
+    // As with the limit, the dictation itself succeeded and only part of it was lost, so the reason
+    // travels to the listener rather than becoming LastError, which would read as a failed take.
+    private void ReportPostProcessingFailed(string reason)
+    {
+        // The reason is shown on the floating pill, which grows to fit it, and an endpoint detail can
+        // be a whole response body. The log keeps the exception in full.
+        var summary = string.Join(' ', reason.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+        if (summary.Length > MaxReasonLength)
+        {
+            var cut = MaxReasonLength;
+
+            // The cap counts UTF-16 code units, so back off a lead surrogate the cut would strand —
+            // HarfBuzz renders an orphaned lead as a visible replacement glyph on the pill.
+            if (char.IsHighSurrogate(summary[cut - 1]))
+            {
+                cut--;
+            }
+
+            summary = string.Concat(summary.AsSpan(0, cut).TrimEnd(), "...");
+        }
+
+        PostProcessingFailed?.Invoke(this, new PostProcessingFailedEventArgs(summary));
     }
 
     private void SetState(DictationState state)

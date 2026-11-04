@@ -71,6 +71,7 @@ public sealed class StatusOverlayController(
 
         dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(Refresh);
         dictation.RecordingLimitReached += (_, args) => Dispatcher.UIThread.Post(() => NoteLimit(args.Limit));
+        dictation.PostProcessingFailed += (_, args) => Dispatcher.UIThread.Post(() => NotePostProcessingSkipped(args.Reason));
         levelMeter.LevelChanged += (_, level) => Interlocked.Exchange(ref _levelBits, BitConverter.SingleToInt32Bits(level));
     }
 
@@ -79,6 +80,12 @@ public sealed class StatusOverlayController(
         var seconds = Math.Round(limit.TotalSeconds);
 
         _notice = $"Stopped at the {seconds:0} second limit";
+    }
+
+    private void NotePostProcessingSkipped(string reason)
+    {
+        // One slot serves both notices and only the limit explains why words are missing, so it wins.
+        _notice ??= $"Post-processing skipped: {reason}";
     }
 
     private void Refresh()

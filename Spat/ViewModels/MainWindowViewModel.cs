@@ -67,6 +67,7 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
 
     _dictation.StateChanged += (_, _) => Dispatcher.UIThread.Post(RefreshDictationStatus);
     _dictation.RecordingLimitReached += (_, args) => Dispatcher.UIThread.Post(() => ReportRecordingLimit(args.Limit));
+    _dictation.PostProcessingFailed += (_, args) => Dispatcher.UIThread.Post(() => ReportPostProcessingSkipped(args.Reason));
     _hotkeys.Activated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyActivated);
     _hotkeys.Deactivated += (_, _) => Dispatcher.UIThread.Post(OnHotkeyDeactivated);
     _hotkeys.BindingLost += (_, _) => Dispatcher.UIThread.Post(OnHotkeyBindingLost);
@@ -254,5 +255,10 @@ public partial class MainWindowViewModel : ViewModelBase<MainWindow>, IMainWindo
     var seconds = Math.Round(limit.TotalSeconds);
 
     _snackbars.Show($"Recording stopped at its {seconds:0} second limit. What it captured was kept.", SnackbarKind.Error);
+  }
+
+  private void ReportPostProcessingSkipped(string reason)
+  {
+    _snackbars.Show($"Post-processing was skipped, so Spat is typing the raw transcription. {reason}", SnackbarKind.Error);
   }
 }

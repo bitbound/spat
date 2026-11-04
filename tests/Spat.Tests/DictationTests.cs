@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Spat.Libraries.Core.Audio;
 using Spat.Libraries.Core.CustomDictionary;
 using Spat.Libraries.Core.Dictation;
@@ -160,25 +161,191 @@ public class DictationCoordinatorTests
     }
 
     [Fact]
-    public async Task StopAsync_WhenPostProcessingFails_KeepsTheRawTranscriptionInHistory()
+    public async Task StopAsync_WhenPostProcessingCannotBeReached_TypesTheRawTranscriptionAndReportsTheSkip()
     {
         var ct = TestContext.Current.CancellationToken;
 
         _settings.Current.PostProcessing.Enabled = true;
         _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
         _settings.Current.PostProcessing.ModelId = "qwen3";
-        _textGeneration.Throw = new AiEndpointException("The endpoint rejected the prompt.", statusCode: 400);
+        _textGeneration.Throw = new AiEndpointException(
+            "Could not reach the AI endpoint at https://text.example.test/v1/chat/completions.",
+            statusCode: 400);
+
+        PostProcessingFailedEventArgs? reported = null;
+        _coordinator.PostProcessingFailed += (_, args) => reported = args;
 
         await _coordinator.StartAsync(ct);
         await _coordinator.StopAsync(ct);
 
-        Assert.Equal(DictationState.Error, _coordinator.State);
-        Assert.Empty(_injector.Typed);
+        Assert.Equal(DictationState.Idle, _coordinator.State);
+        Assert.Null(_coordinator.LastError);
+        Assert.Equal(["hello there"], _injector.Typed);
+        Assert.NotNull(reported);
+        Assert.Equal("Could not reach the AI endpoint at https://text.example.test/v1/chat/completions.", reported.Reason);
 
         var entry = Assert.Single(_history.GetAll());
         Assert.Equal("hello there", entry.Text);
         Assert.Null(entry.Transcription);
         Assert.Null(entry.PromptTitle);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingThrowsAnythingButCancellation_StillTypesTheRawTranscription()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _textGeneration.Throw = new InvalidOperationException("The response was not a completion.");
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.Equal(DictationState.Idle, _coordinator.State);
+        Assert.Equal(["hello there"], _injector.Typed);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingFailsWithABody_ReportsASingleLineReason()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+
+        var failure = new AiEndpointException(
+            "The AI endpoint at https://text.example.test/v1 returned status 500.",
+            statusCode: 500,
+            detail: "{\n  \"error\": \"" + new string('x', 400) + "\"\n}");
+        _textGeneration.Throw = failure;
+
+        PostProcessingFailedEventArgs? reported = null;
+        _coordinator.PostProcessingFailed += (_, args) => reported = args;
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.NotNull(reported);
+        Assert.DoesNotContain("\n", reported.Reason);
+        Assert.DoesNotContain("\r", reported.Reason);
+        Assert.EndsWith("...", reported.Reason);
+        Assert.Equal(163, reported.Reason.Length);
+        Assert.True(reported.Reason.Length < failure.Message.Length);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingThrowsAProgrammingFault_LogsAnError()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _textGeneration.Throw = new InvalidOperationException("The response was not a completion.");
+
+        var logger = new RecordingLogger();
+        var coordinator = Create(_settings, logger);
+
+        await coordinator.StartAsync(ct);
+        await coordinator.StopAsync(ct);
+
+        Assert.Contains(LogLevel.Error, logger.Levels);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingCannotBeReached_LogsAWarningNotAnError()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _textGeneration.Throw = new AiEndpointException("The endpoint returned status 500.", statusCode: 500);
+
+        var logger = new RecordingLogger();
+        var coordinator = Create(_settings, logger);
+
+        await coordinator.StartAsync(ct);
+        await coordinator.StopAsync(ct);
+
+        Assert.DoesNotContain(LogLevel.Error, logger.Levels);
+        Assert.Contains(LogLevel.Warning, logger.Levels);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingFails_ReportsTheSkipBeforeTyping()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _textGeneration.Throw = new AiEndpointException("The endpoint returned status 500.", statusCode: 500);
+
+        var typedAtReport = -1;
+        _coordinator.PostProcessingFailed += (_, _) => typedAtReport = _injector.Typed.Count;
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.Equal(0, typedAtReport);
+        Assert.Equal(["hello there"], _injector.Typed);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingFailsNearASurrogatePair_ReportsAWholeCharacterReason()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+
+        // 90 filler units puts the lead half of the pair exactly on the last unit the cap keeps, so
+        // the guard drops it and the reason is 162 units. Any other count reaches no boundary.
+        _textGeneration.Throw = new AiEndpointException(
+            "The AI endpoint at https://text.example.test/v1 returned status 500.",
+            statusCode: 500,
+            detail: new string('x', 90) + "\U0001F600tail");
+
+        PostProcessingFailedEventArgs? reported = null;
+        _coordinator.PostProcessingFailed += (_, args) => reported = args;
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.NotNull(reported);
+        Assert.Equal(162, reported.Reason.Length);
+        Assert.False(char.IsHighSurrogate(reported.Reason[^4]));
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenPostProcessingFailsWithASecondLineBreak_ReportsASingleLineReason()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        _settings.Current.PostProcessing.Enabled = true;
+        _settings.Current.PostProcessing.Endpoint = "https://text.example.test/v1";
+        _settings.Current.PostProcessing.ModelId = "qwen3";
+        _textGeneration.Throw = new AiEndpointException(
+            "The AI endpoint at https://text.example.test/v1 returned status 500.",
+            statusCode: 500,
+            detail: "{ \"error\": \"up\u2028\u000B\u0085\u2029set\"" + new string('x', 300) + "\" }");
+
+        PostProcessingFailedEventArgs? reported = null;
+        _coordinator.PostProcessingFailed += (_, args) => reported = args;
+
+        await _coordinator.StartAsync(ct);
+        await _coordinator.StopAsync(ct);
+
+        Assert.NotNull(reported);
+        Assert.DoesNotContain('\u2028', reported.Reason);
+        Assert.DoesNotContain('\u2029', reported.Reason);
+        Assert.DoesNotContain('\u0085', reported.Reason);
+        Assert.DoesNotContain('\v', reported.Reason);
     }
 
     [Fact]
@@ -514,6 +681,11 @@ public class DictationCoordinatorTests
 
     private DictationCoordinator Create(SettingsService settings)
     {
+        return Create(settings, NullLogger<DictationCoordinator>.Instance);
+    }
+
+    private DictationCoordinator Create(SettingsService settings, ILogger<DictationCoordinator> logger)
+    {
         var prompts = new PromptService(new TestPlatformPaths(), _fileStore, settings);
 
         return new DictationCoordinator(
@@ -528,6 +700,21 @@ public class DictationCoordinatorTests
             _injector,
             settings,
             new FakeTimeProvider(),
-            NullLogger<DictationCoordinator>.Instance);
+            logger);
+    }
+}
+
+internal sealed class RecordingLogger : ILogger<DictationCoordinator>
+{
+    public List<LogLevel> Levels { get; } = [];
+
+    public IDisposable? BeginScope<TState>(TState state)
+        where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        Levels.Add(logLevel);
     }
 }
