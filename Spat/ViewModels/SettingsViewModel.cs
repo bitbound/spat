@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Spat.Libraries.Core.Audio;
 using Spat.Libraries.Core.Input;
@@ -40,19 +41,24 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
   public partial string ThemeModeName { get; set; } = "System";
 
   [ObservableProperty]
-  public partial int HistoryItemsToKeep { get; set; } = 50;
+  public partial string HistoryItemsToKeep { get; set; } = AppSettings.DefaultHistoryItemsToKeep.ToString(CultureInfo.InvariantCulture);
   [ObservableProperty]
   public partial bool KeepRecordings { get; set; } = true;
 
   [ObservableProperty]
   public partial bool CheckForUpdates { get; set; } = true;
   [ObservableProperty]
-  public partial int MaximumRecordingSeconds { get; set; } = 120;
+  public partial string MaximumRecordingSeconds { get; set; } = AppSettings.DefaultMaximumRecordingSeconds.ToString(CultureInfo.InvariantCulture);
 
   [ObservableProperty]
-  public partial float SilenceRmsThreshold { get; set; } = AppSettings.DefaultSilenceRmsThreshold;
+  public partial string SilenceRmsThreshold { get; set; } = AppSettings.DefaultSilenceRmsThreshold.ToString(CultureInfo.InvariantCulture);
   [ObservableProperty]
-  public partial int TypingDelayMs { get; set; } = AppSettings.DefaultTypingDelayMs;
+  public partial string TypingDelayMs { get; set; } = AppSettings.DefaultTypingDelayMs.ToString(CultureInfo.InvariantCulture);
+
+  public string DefaultHistoryItemsToKeep => AppSettings.DefaultHistoryItemsToKeep.ToString(CultureInfo.InvariantCulture);
+  public string DefaultMaximumRecordingSeconds => AppSettings.DefaultMaximumRecordingSeconds.ToString(CultureInfo.InvariantCulture);
+  public string DefaultSilenceRmsThreshold => AppSettings.DefaultSilenceRmsThreshold.ToString(CultureInfo.InvariantCulture);
+  public string DefaultTypingDelayMs => AppSettings.DefaultTypingDelayMs.ToString(CultureInfo.InvariantCulture);
 
   [ObservableProperty]
   public partial bool DebugLogging { get; set; }
@@ -220,11 +226,20 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
             ? trigger
             : ShortcutTriggerMode.Tap;
         settings.Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? AppSettings.DefaultHotkey : Hotkey.Trim();
-        settings.HistoryItemsToKeep = Math.Clamp(HistoryItemsToKeep, 0, 5000);
+
+        if (!TryReadInt32Field(HistoryItemsToKeep, "History items to keep", out var historyItemsToKeep)
+            || !TryReadInt32Field(MaximumRecordingSeconds, "Max recording seconds", out var maximumRecordingSeconds)
+            || !TryReadFloatField(SilenceRmsThreshold, "Silence threshold", out var silenceRmsThreshold)
+            || !TryReadInt32Field(TypingDelayMs, "Typing delay (ms)", out var typingDelayMs))
+        {
+            return;
+        }
+
+        settings.HistoryItemsToKeep = Math.Clamp(historyItemsToKeep, 0, 5000);
         settings.KeepRecordings = KeepRecordings;
-        settings.MaximumRecordingSeconds = Math.Clamp(MaximumRecordingSeconds, 1, 3600);
-        settings.SilenceRmsThreshold = Math.Clamp(SilenceRmsThreshold, 0.0001f, 0.1f);
-        settings.TypingDelayMs = Math.Clamp(TypingDelayMs, 0, 100);
+        settings.MaximumRecordingSeconds = Math.Clamp(maximumRecordingSeconds, 1, 3600);
+        settings.SilenceRmsThreshold = Math.Clamp(silenceRmsThreshold, 0.0001f, 0.1f);
+        settings.TypingDelayMs = Math.Clamp(typingDelayMs, 0, 100);
         settings.StartOnLogin = StartOnLogin;
         settings.CheckForUpdates = CheckForUpdates;
         settings.DebugLogging = DebugLogging;
@@ -242,6 +257,34 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
         ApplyAutostart();
 
         ReportSaved();
+    }
+
+    private bool TryReadInt32Field(string value, string fieldName, out int result)
+    {
+        result = 0;
+
+        if (int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+        {
+            result = parsed;
+            return true;
+        }
+
+        ReportFailed($"{fieldName} must be a whole number.");
+        return false;
+    }
+
+    private bool TryReadFloatField(string value, string fieldName, out float result)
+    {
+        result = 0;
+
+        if (float.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+        {
+            result = parsed;
+            return true;
+        }
+
+        ReportFailed($"{fieldName} must be a number.");
+        return false;
     }
 
     // The toggle in the UI is just the intent; the registry entry is only touched here so a cancelled
@@ -328,11 +371,11 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
         ThemeModeName = settings.Theme.ToString();
         TriggerModeName = settings.TriggerMode.ToString();
         Hotkey = settings.Hotkey;
-        HistoryItemsToKeep = settings.HistoryItemsToKeep;
+        HistoryItemsToKeep = settings.HistoryItemsToKeep.ToString(CultureInfo.InvariantCulture);
         KeepRecordings = settings.KeepRecordings;
-        MaximumRecordingSeconds = settings.MaximumRecordingSeconds;
-        SilenceRmsThreshold = settings.SilenceRmsThreshold;
-        TypingDelayMs = settings.TypingDelayMs;
+        MaximumRecordingSeconds = settings.MaximumRecordingSeconds.ToString(CultureInfo.InvariantCulture);
+        SilenceRmsThreshold = settings.SilenceRmsThreshold.ToString(CultureInfo.InvariantCulture);
+        TypingDelayMs = settings.TypingDelayMs.ToString(CultureInfo.InvariantCulture);
         StartOnLogin = _autostart.IsEnabled();
         CheckForUpdates = settings.CheckForUpdates;
         DebugLogging = settings.DebugLogging;

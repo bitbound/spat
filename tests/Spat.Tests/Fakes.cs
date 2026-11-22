@@ -364,3 +364,29 @@ public sealed class FakeUpdateService : IUpdateService
         return Task.CompletedTask;
     }
 }
+
+public sealed class FakeAudioDeviceEnumerator : IAudioCaptureDeviceEnumerator
+{
+    public Task<IReadOnlyList<AudioDevice>> GetDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<AudioDevice>>([]);
+    }
+}
+
+public sealed class FakeAutostartService : IAutostartService
+{
+    public bool Enabled { get; set; }
+
+    public bool IsEnabled() => Enabled;
+
+    public void SetEnabled(bool enabled) => Enabled = enabled;
+}
+
+public sealed class FakeCertificateTrustService : ICertificateTrustService
+{
+    public bool IsPublisherTrusted() => false;
+
+    public void TrustPublisher()
+    {
+    }
+}

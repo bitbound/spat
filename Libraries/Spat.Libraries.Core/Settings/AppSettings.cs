@@ -33,14 +33,18 @@ public sealed class AppSettings
 
     public string Hotkey { get; set; } = DefaultHotkey;
 
-    public int HistoryItemsToKeep { get; set; } = 50;
+    public int HistoryItemsToKeep { get; set; } = DefaultHistoryItemsToKeep;
+
+    public const int DefaultHistoryItemsToKeep = 50;
 
     /// <summary>
     /// Keeps the captured WAV next to each history entry so it can be played back.
     /// </summary>
     public bool KeepRecordings { get; set; } = true;
 
-    public int MaximumRecordingSeconds { get; set; } = 120;
+    public int MaximumRecordingSeconds { get; set; } = DefaultMaximumRecordingSeconds;
+
+    public const int DefaultMaximumRecordingSeconds = 120;
 
     public float SilenceRmsThreshold { get; set; } = DefaultSilenceRmsThreshold;
 
