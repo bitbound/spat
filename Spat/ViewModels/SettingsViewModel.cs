@@ -219,14 +219,7 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
         SaveError = null;
         SaveMessage = null;
 
-        var settings = _settings.Current;
-
-        settings.Theme = Enum.TryParse<ThemeMode>(ThemeModeName, out var theme) ? theme : ThemeMode.System;
-        settings.TriggerMode = Enum.TryParse<ShortcutTriggerMode>(TriggerModeName, out var trigger)
-            ? trigger
-            : ShortcutTriggerMode.Tap;
-        settings.Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? AppSettings.DefaultHotkey : Hotkey.Trim();
-
+        // Parse every field before touching settings so a rejected value leaves the live settings untouched.
         if (!TryReadInt32Field(HistoryItemsToKeep, "History items to keep", out var historyItemsToKeep)
             || !TryReadInt32Field(MaximumRecordingSeconds, "Max recording seconds", out var maximumRecordingSeconds)
             || !TryReadFloatField(SilenceRmsThreshold, "Silence threshold", out var silenceRmsThreshold)
@@ -235,6 +228,13 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
             return;
         }
 
+        var settings = _settings.Current;
+
+        settings.Theme = Enum.TryParse<ThemeMode>(ThemeModeName, out var theme) ? theme : ThemeMode.System;
+        settings.TriggerMode = Enum.TryParse<ShortcutTriggerMode>(TriggerModeName, out var trigger)
+            ? trigger
+            : ShortcutTriggerMode.Tap;
+        settings.Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? AppSettings.DefaultHotkey : Hotkey.Trim();
         settings.HistoryItemsToKeep = Math.Clamp(historyItemsToKeep, 0, 5000);
         settings.KeepRecordings = KeepRecordings;
         settings.MaximumRecordingSeconds = Math.Clamp(maximumRecordingSeconds, 1, 3600);
@@ -277,7 +277,8 @@ public sealed partial class SettingsViewModel : SettingsPageViewModel<SettingsVi
     {
         result = 0;
 
-        if (float.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+        if (float.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            && float.IsFinite(parsed))
         {
             result = parsed;
             return true;
